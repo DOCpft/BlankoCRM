@@ -1,14 +1,48 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using BlankoCRM.Core;
+using BlankoCRM.Core.Entities;
 using BlankoCRM.Infrastructure.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add device-specific services used by the BlankoCRM.Shared project
+builder.Services.AddScoped<IPasswordHasher<Tenant>, PasswordHasher<Tenant>>();
+
+// JWT configuration (for development you can keep defaults, but better move to appsettings.json)
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-secret-key-change-in-production";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "BlankoCRM";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "BlankoCRMClient";
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = signingKey,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
@@ -22,18 +56,28 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
-app.UseAntiforgery();
+app.UseSwagger();
+app.UseSwaggerUI();
 
-// middleware компонент для определения текущего пользователя базы
+app.UseStaticFiles();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// middleware: TenantId пїЅпїЅ JWT
 app.Use(async (context, next) =>
 {
-    // Здесь получи TenantId из JWT-токена, заголовка или поддомена
-    // Пока для разработки можно использовать фиксированный ID
-    var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111"); // заменим позже
-    TenantContext.CurrentTenantId = tenantId;
+    var tenantIdClaim = context.User.FindFirst("tenantId")?.Value
+                        ?? context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+    if (Guid.TryParse(tenantIdClaim, out var tenantId))
+    {
+        TenantContext.CurrentTenantId = tenantId;
+    }
+
     await next();
 });
 
+app.MapControllers();
 
 app.Run();
