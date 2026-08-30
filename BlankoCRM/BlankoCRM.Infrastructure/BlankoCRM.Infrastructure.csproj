@@ -21,13 +21,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\BlankoCRM.Application\BlankoCRM.Application.csproj" />
+    <ItemGroup>
     <ProjectReference Include="..\BlankoCRM.Core\BlankoCRM.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="DI\" />
   </ItemGroup>
 
 </Project>

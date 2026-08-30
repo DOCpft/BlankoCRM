@@ -1,6 +1,6 @@
-﻿using BlankoCRM.Core;
-using BlankoCRM.Core.Entities;
+﻿using BlankoCRM.Core.Entities;
 using BlankoCRM.Core.Interfaces;
+using BlankoCRM.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -8,10 +8,6 @@ namespace BlankoCRM.Infrastructure.Data;
 
 public class AppDbContext : DbContext
 {
-    //public AppDbContext()
-    //{
-        
-    //}
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
@@ -21,23 +17,33 @@ public class AppDbContext : DbContext
     public DbSet<Service> Services { get; set; }
     public DbSet<Appointment> Appointments { get; set; }
     public DbSet<AppointmentService> AppointmentServices { get; set; }
+    public DbSet<Schedule> Schedules { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Глобальный фильтр для всех сущностей с TenantId
+        // Глобальный фильтр для всех сущностей с TenantId.
+        // Фильтр применяется ТОЛЬКО если TenantContext.CurrentTenantId не null.
+        // Это защищает неавторизованные запросы (регистрация, логин) от некорректной фильтрации.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()
             .Where(e => typeof(IMultiTenant).IsAssignableFrom(e.ClrType)))
         {
             var parameter = Expression.Parameter(entityType.ClrType, "e");
             var tenantIdProperty = Expression.Property(parameter, nameof(IMultiTenant.TenantId));
-            var currentTenantId = Expression.Property(null, typeof(TenantContext), nameof(TenantContext.CurrentTenantId));
-            var comparison = Expression.Equal(tenantIdProperty, currentTenantId);
-            var lambda = Expression.Lambda(comparison, parameter);
 
-            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            // СТАТИЧЕСКОЕ СВОЙСТВО — без захвата экземпляра
+            var currentTenantId = Expression.Property(null, typeof(TenantContext), nameof(TenantContext.CurrentTenantId));
+
+            var hasValue = Expression.Property(currentTenantId, "HasValue");
+            var value = Expression.Property(currentTenantId, "Value");
+            var comparison = Expression.Equal(tenantIdProperty, value);
+            var andAlso = Expression.AndAlso(hasValue, comparison);
+
+            var lambda = Expression.Lambda(andAlso, parameter);
+            //modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            modelBuilder.Entity<Client>().HasQueryFilter(e => e.TenantId == TenantContext.CurrentTenantId);
         }
 
         // Настройка таблиц, связей, индексов
@@ -95,7 +101,6 @@ public class AppDbContext : DbContext
             entity.HasKey(s => s.Id);
             entity.Property(s => s.Name).IsRequired().HasMaxLength(100);
             entity.Property(s => s.Price).HasColumnType("decimal(18,2)");
-            entity.Property(s => s.Color).HasMaxLength(7); // HEX-цвет, например "#FF0000"
 
             entity.HasIndex(s => s.TenantId);
 
@@ -183,15 +188,12 @@ public class AppDbContext : DbContext
         });
     }
 
-    private static void SetGlobalQueryFilter<T>(ModelBuilder modelBuilder) where T : class, IMultiTenant
+    private void ConfigureSchedule(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<T>().HasQueryFilter(e => e.TenantId == GetCurrentTenantId());
-    }
+        modelBuilder.Entity<Schedule>(entity =>
+            {
 
-    // Заглушка для получения текущего TenantId (позже заменим на реальный провайдер)
-    private static Guid GetCurrentTenantId()
-    {
-        // Временное значение, пока нет middleware
-        return Guid.Empty; // или какой-то тестовый ID
+            }
+        );
     }
 }

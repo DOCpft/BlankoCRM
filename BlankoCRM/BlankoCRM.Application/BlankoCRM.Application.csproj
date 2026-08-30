@@ -6,8 +6,16 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+    <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.13" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.13" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.4.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\BlankoCRM.Core\BlankoCRM.Core.csproj" />
+    <ProjectReference Include="..\BlankoCRM.Infrastructure\BlankoCRM.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

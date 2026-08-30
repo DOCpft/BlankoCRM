@@ -16,7 +16,7 @@ namespace BlankoCRM.Core.Entities
         public decimal Price { get; set; }           // Цена на момент записи (копируется из услуги, но может быть изменена)
         public int DurationMinutes { get; set; }     // Длительность на момент записи (копируется из услуги)
         public string? ServiceName { get; set; }     // Денормализованное название (чтобы не терять историю, если услуга потом переименуется)
-        public int? Quantity { get; set; } = 1;      // На случай, если услуга может повторяться (например, 2 часа массажа)
+        public int Quantity { get; set; } = 1;      // Количество (например, 2 часа массажа = 2 единицы по 60 минут)
 
         // Навигационные свойства
         public Tenant Tenant { get; set; }

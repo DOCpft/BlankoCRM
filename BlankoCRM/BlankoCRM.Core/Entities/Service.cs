@@ -18,7 +18,6 @@ namespace BlankoCRM.Core.Entities
         public int DurationMinutes { get; set; }     // Длительность в минутах (для календаря)
         public decimal Price { get; set; }           // Стоимость
         public string? Description { get; set; }     // Описание (необязательно)
-        public string? Color { get; set; }           // Цвет в календаре (опционально)
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
