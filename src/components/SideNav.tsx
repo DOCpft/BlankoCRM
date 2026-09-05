@@ -37,8 +37,21 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
               routeNavigator.push('/');
             }}
           >
-            {!collapsed ? 'Панель' : ' '}
+            {!collapsed ? 'Главная' : ' '}
           </Button>
+          
+          <Button
+            stretched
+            size="l"
+            mode="secondary"
+            onClick={() => {
+              if (onNavigate) onNavigate(DEFAULT_VIEW_PANELS.SERVICES);
+              routeNavigator.push(`/${DEFAULT_VIEW_PANELS.SERVICES}`);
+            }}
+          >
+            {!collapsed ? 'Услуги' : ' '}
+          </Button>
+
           <Button
             stretched
             size="l"
@@ -50,6 +63,7 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Клиенты' : ' '}
           </Button>
+
           <Button
             stretched
             size="l"
@@ -61,6 +75,19 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Записи' : ' '}
           </Button>
+          
+          <Button
+            stretched
+            size="l"
+            mode="secondary"
+            onClick={() => {
+              if (onNavigate) onNavigate(DEFAULT_VIEW_PANELS.SLOTS);
+              routeNavigator.push(`/${DEFAULT_VIEW_PANELS.SLOTS}`);
+            }}
+          >
+            {!collapsed ? 'Слоты' : ' '}
+          </Button>
+
           <Button
             stretched
             size="l"
@@ -72,6 +99,7 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Профиль' : ' '}
           </Button>
+    
           <Button
             stretched
             size="l"

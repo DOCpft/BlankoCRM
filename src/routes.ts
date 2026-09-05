@@ -16,6 +16,8 @@ export const DEFAULT_VIEW_PANELS = {
   APPOINTMENTS: 'appointments',
   PROFILE: 'profile',
   SETTINGS: 'settings',
+  SERVICES: 'services',
+  SLOTS: 'slots',
 } as const;
 
 export const routes = RoutesConfig.create([
@@ -26,6 +28,8 @@ export const routes = RoutesConfig.create([
       createPanel(DEFAULT_VIEW_PANELS.APPOINTMENTS, `/${DEFAULT_VIEW_PANELS.APPOINTMENTS}`, []),
       createPanel(DEFAULT_VIEW_PANELS.PROFILE, `/${DEFAULT_VIEW_PANELS.PROFILE}`, []),
       createPanel(DEFAULT_VIEW_PANELS.SETTINGS, `/${DEFAULT_VIEW_PANELS.SETTINGS}`, []),
+      createPanel(DEFAULT_VIEW_PANELS.SERVICES, `/${DEFAULT_VIEW_PANELS.SERVICES}`, []),
+      createPanel(DEFAULT_VIEW_PANELS.SLOTS, `/${DEFAULT_VIEW_PANELS.SLOTS}`, []),
     ]),
   ]),
 ]);
