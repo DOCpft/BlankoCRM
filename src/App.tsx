@@ -9,7 +9,6 @@ import { DEFAULT_VIEW, DEFAULT_VIEW_PANELS } from './routes';
 
 export const App: FC = () => {
   const { panel: activePanel = DEFAULT_VIEW_PANELS.DASHBOARD } = useActiveVkuiLocation();
-  // showNav: whether the full side nav panel is visible
   const [showNav, setShowNav] = useState(true);
   const gestureStart = useRef<{ x: number; y: number } | null>(null);
 
@@ -17,7 +16,6 @@ export const App: FC = () => {
     if (event.pointerType === 'mouse' && event.button !== 0) {
       return;
     }
-
     gestureStart.current = { x: event.clientX, y: event.clientY };
   };
 
@@ -37,9 +35,12 @@ export const App: FC = () => {
       return;
     }
 
-    if (!showNav && deltaX > 0) {
+    // Открываем меню при свайпе вправо от левого края (x <= 100)
+    if (!showNav && deltaX > 0 && start.x <= 150) {
       setShowNav(true);
-    } else if (showNav && deltaX < 0 && start.x <= 320) {
+    }
+    // Закрываем меню при свайпе влево, если меню открыто и начальная точка слева
+    else if (showNav && deltaX < 0 && start.x <= 320) {
       setShowNav(false);
     }
   };
@@ -58,10 +59,6 @@ export const App: FC = () => {
       <aside className={`crm-side ${showNav ? 'crm-side--open' : 'crm-side--collapsed'}`}>
         <SideNav collapsed={false} onToggle={() => setShowNav(false)} onNavigate={() => setShowNav(false)} />
       </aside>
-
-      {!showNav && (
-        <div className="crm-swipe-edge" aria-hidden="true" />
-      )}
 
       {!showNav && (
         <div className="crm-burger-overlay">

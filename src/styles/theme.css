@@ -52,7 +52,7 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   min-width: 0;
   position: relative;
   background: var(--vkui--color_background, var(--crm-bg));
-  touch-action: pan-y;
+  touch-action: none;
 }
 .crm-side {
   background: var(--vkui--color_background, var(--crm-bg));
@@ -87,6 +87,7 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   background: var(--vkui--color_background, var(--crm-bg));
   /* The drawer overlays the content, so the page never reflows during a swipe. */
   margin-left: 0;
+  touch-action: pan-y; /* разрешаем вертикальный скролл внутри контента */
 }
 .crm-main .vkui__view {
   height: 100%;
@@ -103,6 +104,7 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
 .crm-burger .vkuiButton {
   background: transparent;
 }
+
 /* Make primary buttons use the accent color */
 .vkui--mode--light .vkuiButton--mode-primary {
   background: var(--crm-accent);
@@ -126,12 +128,27 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   z-index: 20;
 }
 
-/* Full-height touch target for opening the menu from any vertical position */
-.crm-swipe-edge {
-  position: fixed;
-  inset: 0 auto 0 0;
-  width: 48px;
-  z-index: 19;
-  touch-action: none;
+
+/*КНОПКИ САЙДБАРА*/
+.crm-side-buttons-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 12px 12px 12px;
+  overflow: hidden
 }
 
+.crm-side-main-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px
+}
+/* Группа нижних кнопок */
+.crm-side-other-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 8px
+}

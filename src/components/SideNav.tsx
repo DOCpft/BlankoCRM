@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { Panel, PanelHeader, Group, Div, IconButton, Button } from '@vkontakte/vkui';
+import { Panel, PanelHeader, Div, IconButton, Button } from '@vkontakte/vkui';
 import { Icon28MenuOutline } from '@vkontakte/icons';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { DEFAULT_VIEW_PANELS } from '../routes';
@@ -13,10 +13,16 @@ interface SideNavProps {
 export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) => {
   const routeNavigator = useRouteNavigator();
 
-  // SideNav mounted (no debug logs)
-
   return (
-    <Panel id="sidenav" style={{ height: '100%' }}>
+    <Panel
+      id="sidenav"
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--crm-bg)',
+      }}
+    >
       <PanelHeader>
         <Div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <IconButton aria-label="menu" onClick={onToggle} style={{ padding: 6 }}>
@@ -28,7 +34,6 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
                 fontWeight: 600,
                 fontSize: 16,
                 whiteSpace: 'nowrap',
-                overflow: 'visible',
                 flexShrink: 0,
               }}
             >
@@ -38,8 +43,10 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
         </Div>
       </PanelHeader>
 
-      <Group>
-        <Div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Основной контейнер – занимает всю оставшуюся высоту и распределяет кнопки по краям */}
+      <div className="crm-side-buttons-container">
+        {/* Верхняя группа кнопок – компактно сверху */}
+        <div className="crm-side-main-buttons">
           <Button
             stretched
             size="l"
@@ -51,7 +58,6 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Главная' : ' '}
           </Button>
-          
           <Button
             stretched
             size="l"
@@ -63,7 +69,6 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Услуги' : ' '}
           </Button>
-
           <Button
             stretched
             size="l"
@@ -75,7 +80,6 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Клиенты' : ' '}
           </Button>
-
           <Button
             stretched
             size="l"
@@ -87,7 +91,6 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Записи' : ' '}
           </Button>
-          
           <Button
             stretched
             size="l"
@@ -99,7 +102,10 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Слоты' : ' '}
           </Button>
+        </div>
 
+        {/* Нижняя группа кнопок – прижата к низу */}
+        <div className="crm-side-other-buttons">
           <Button
             stretched
             size="l"
@@ -111,7 +117,6 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Профиль' : ' '}
           </Button>
-    
           <Button
             stretched
             size="l"
@@ -123,11 +128,20 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
           >
             {!collapsed ? 'Настройки' : ' '}
           </Button>
-        </Div>
-      </Group>
+        </div>
+      </div>
 
       {collapsed && (
-        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: 'var(--crm-accent)' }} />
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 6,
+            background: 'var(--crm-accent)',
+          }}
+        />
       )}
     </Panel>
   );
