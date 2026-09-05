@@ -13,7 +13,7 @@ html, body, #root {
 
 body {
   margin: 0;
-  background: var(--crm-bg);
+  background: var(--vkui--color_background, var(--crm-bg));
   color: var(--crm-muted);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
 }
@@ -51,45 +51,45 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   width: 100%;
   min-width: 0;
   position: relative;
+  background: var(--vkui--color_background, var(--crm-bg));
+  touch-action: pan-y;
 }
 .crm-side {
-  background: var(--crm-surface);
-  border-right: 1px solid var(--crm-border);
+  background: var(--vkui--color_background, var(--crm-bg));
+  border-right: 1px solid rgb(255 255 255 / 12%);
   box-sizing: border-box;
-}
-.crm-side--open {
-  flex: 0 0 280px;
-  width: 280px;
-  /* fix sidebar to left so it doesn't create unexpected gaps between columns */
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
+  width: 280px;
   z-index: 15;
+  transition: transform 260ms ease, box-shadow 260ms ease;
+}
+.crm-side--open {
+  transform: translateX(0);
+  box-shadow: 8px 0 24px rgb(0 0 0 / 12%);
 }
 .crm-side--collapsed {
-  /* Collapsed state: occupy no horizontal space so main fills width */
-  flex: 0 0 0;
-  width: 0;
-  overflow: hidden;
+  transform: translateX(-100%);
   background: transparent; /* don't show the white strip when collapsed */
   border-right: none;
   box-shadow: none;
   pointer-events: none;
 }
+.crm-side--collapsed > * {
+  visibility: hidden;
+}
 .crm-main {
   flex: 1 1 auto;
   min-width: 0;
   overflow: auto;
-  transition: margin-left 0ms ease;
+  background: var(--vkui--color_background, var(--crm-bg));
+  /* The drawer overlays the content, so the page never reflows during a swipe. */
+  margin-left: 0;
 }
 .crm-main .vkui__view {
   height: 100%;
-}
-
-/* When sidebar is open (fixed), push main content to the right */
-.crm-side--open + .crm-main {
-  margin-left: 280px;
 }
 
 /* Burger button placed over main content when sidebar is collapsed */
@@ -114,11 +114,24 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   background: transparent;
 }
 
+.crm-side > .vkuiPanel {
+  background: transparent !important;
+}
+
 /* Absolute burger overlay when nav is collapsed */
 .crm-burger-overlay {
   position: absolute;
   left: 8px;
   top: 8px;
   z-index: 20;
+}
+
+/* Full-height touch target for opening the menu from any vertical position */
+.crm-swipe-edge {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 48px;
+  z-index: 19;
+  touch-action: none;
 }
 

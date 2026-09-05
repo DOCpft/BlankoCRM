@@ -16,13 +16,25 @@ export const SideNav: FC<SideNavProps> = ({ collapsed, onToggle, onNavigate }) =
   // SideNav mounted (no debug logs)
 
   return (
-    <Panel id="sidenav" style={{ height: '100%', background: 'var(--crm-surface)', borderRight: '1px solid var(--crm-border)' }}>
+    <Panel id="sidenav" style={{ height: '100%' }}>
       <PanelHeader>
         <Div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <IconButton aria-label="menu" onClick={onToggle} style={{ padding: 6 }}>
             <Icon28MenuOutline width={20} height={20} />
           </IconButton>
-          {!collapsed && <div style={{ fontWeight: 600 }}>BLANKO CRM</div>}
+          {!collapsed && (
+            <div
+              style={{
+                fontWeight: 600,
+                fontSize: 16,
+                whiteSpace: 'nowrap',
+                overflow: 'visible',
+                flexShrink: 0,
+              }}
+            >
+              BLANKO CRM
+            </div>
+          )}
         </Div>
       </PanelHeader>
 
