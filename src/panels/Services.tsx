@@ -6,7 +6,9 @@ import { EntityFormModal } from '../components/EntityFormModal';
 interface Service {
   id: number;
   name: string;
-  price: string;
+  price: number;
+  duration: number;
+  description?: string;
 }
 
 export interface ServicesProps extends NavIdProps {}
@@ -21,7 +23,9 @@ export const Services: FC<ServicesProps> = ({ id }) => {
       {
         id: Date.now(),
         name: values.name.trim(),
-        price: values.price.trim(),
+        price: Number(values.price),
+        duration: Number(values.duration),
+        description: values.description ? values.description.trim() : undefined,
       },
     ]);
     setIsFormOpen(false);
@@ -45,7 +49,8 @@ export const Services: FC<ServicesProps> = ({ id }) => {
             services.map((service) => (
               <Div key={service.id} style={{ padding: '12px 0' }}>
                 <strong>{service.name}</strong>
-                <div>{service.price}</div>
+                <div>{service.price} ₽</div>
+                <div>{service.duration} ч.</div>
               </Div>
             ))
           )}
@@ -58,8 +63,10 @@ export const Services: FC<ServicesProps> = ({ id }) => {
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleAddService}
         fields={[
-          { name: 'name', label: 'Название', placeholder: 'Название услуги', required: true },
-          { name: 'price', label: 'Стоимость', placeholder: 'Например, 1500 ₽', required: true },
+          { name: 'name', label: 'Название', placeholder: 'Название услуги', required: true, type: 'text' },
+          { name: 'price', label: 'Стоимость', placeholder: 'Например, 1500 ₽', required: true, type: 'number' },
+          { name: 'duration', label: 'Длительность', placeholder: 'Например, 1 час', required: true, type: 'number' },
+          { name: 'description', label: 'Описание', placeholder: 'Коротко об услуге', required: false, type: 'text' },
         ]}
       />
     </Panel>

@@ -9,7 +9,7 @@ import { DEFAULT_VIEW, DEFAULT_VIEW_PANELS } from './routes';
 
 export const App: FC = () => {
   const { panel: activePanel = DEFAULT_VIEW_PANELS.DASHBOARD } = useActiveVkuiLocation();
-  const [showNav, setShowNav] = useState(true);
+  const [showNav, setShowNav] = useState(false);
   const gestureStart = useRef<{ x: number; y: number } | null>(null);
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
