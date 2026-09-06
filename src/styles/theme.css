@@ -149,3 +149,51 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   gap: 8px;
   padding-bottom: 8px
 }
+
+/* Shared data grid for clients and services */
+.crm-grid-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--crm-border);
+  border-radius: 8px;
+  background: var(--vkui--color_background_content, var(--crm-surface));
+}
+
+.crm-grid {
+  display: grid;
+  min-width: 420px;
+  grid-template-columns: var(--crm-grid-columns);
+}
+
+.crm-grid__row {
+  display: contents;
+}
+
+.crm-grid__cell {
+  min-width: 0;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--crm-border);
+  color: var(--vkui--color_text_primary, inherit);
+  overflow-wrap: anywhere;
+}
+
+.crm-grid__row--header .crm-grid__cell {
+  background: var(--vkui--color_background_secondary, var(--crm-bg));
+  color: var(--vkui--color_text_secondary, var(--crm-muted));
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.crm-grid__row:last-child .crm-grid__cell {
+  border-bottom: 0;
+}
+
+@media (max-width: 480px) {
+  .crm-grid {
+    min-width: 520px;
+  }
+
+  .crm-grid__cell {
+    padding: 12px;
+  }
+}

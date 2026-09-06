@@ -2,11 +2,13 @@ import { FC, useState } from 'react';
 import { Button, Div, Group, Header, NavIdProps, Panel, PanelHeader, Placeholder } from '@vkontakte/vkui';
 
 import { EntityFormModal } from '../components/EntityFormModal';
+import { DataGrid } from '../components/DataGrid';
 
 interface Client {
   id: number;
   name: string;
-  phone: string;
+  phone?: string;
+  network?: string;
 }
 
 export interface ClientsProps extends NavIdProps {}
@@ -21,7 +23,8 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
       {
         id: Date.now(),
         name: values.name.trim(),
-        phone: values.phone.trim(),
+        phone: values.phone.trim() || undefined,
+      network: values.network.trim() || undefined,
       },
     ]);
     setIsFormOpen(false);
@@ -42,12 +45,17 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
           {clients.length === 0 ? (
             <Placeholder>Пусто — сюда будут добавляться клиенты.</Placeholder>
           ) : (
-            clients.map((client) => (
-              <Div key={client.id} style={{ padding: '12px 0' }}>
-                <strong>{client.name}</strong>
-                <div>{client.phone}</div>
-              </Div>
-            ))
+            <DataGrid
+              columns={[
+                { key: 'name', label: 'Имя' },
+                { key: 'phone', label: 'Телефон' },
+                { key: 'network', label: 'Соц. сеть' },
+              ]}
+              rows={clients.map((client) => ({
+                id: client.id,
+                cells: [client.name, client.phone, client.network],
+              }))}
+            />
           )}
         </Div>
       </Group>
@@ -60,6 +68,7 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
         fields={[
           { name: 'name', label: 'Имя', placeholder: 'Имя клиента', required: true },
           { name: 'phone', label: 'Телефон', placeholder: '+7 ...', type: 'tel', required: true },
+          { name: 'network', label: 'Соц. сеть', placeholder: 'Например, VK или Telegram' },
         ]}
       />
     </Panel>

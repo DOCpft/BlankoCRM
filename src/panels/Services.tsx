@@ -2,6 +2,7 @@ import { FC, useState } from 'react';
 import { Button, Div, Group, Header, NavIdProps, Panel, PanelHeader, Placeholder } from '@vkontakte/vkui';
 
 import { EntityFormModal } from '../components/EntityFormModal';
+import { DataGrid } from '../components/DataGrid';
 
 interface Service {
   id: number;
@@ -46,13 +47,16 @@ export const Services: FC<ServicesProps> = ({ id }) => {
           {services.length === 0 ? (
             <Placeholder>Пусто — здесь будут добавляться услуги мастера.</Placeholder>
           ) : (
-            services.map((service) => (
-              <Div key={service.id} style={{ padding: '12px 0' }}>
-                <strong>{service.name}</strong>
-                <div>{service.price} ₽</div>
-                <div>{service.duration} ч.</div>
-              </Div>
-            ))
+            <DataGrid
+              columns={[
+                { key: 'name', label: 'Наименование' },
+                { key: 'price', label: 'Цена' },
+              ]}
+              rows={services.map((service) => ({
+                id: service.id,
+                cells: [service.name, `${service.price} ₽`],
+              }))}
+            />
           )}
         </Div>
       </Group>
