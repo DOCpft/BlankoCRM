@@ -12,3 +12,13 @@ export interface Service {
   duration: number;
   description?: string;
 }
+
+export interface Slot {
+  id: string;
+  startTime: Date;
+  endTime: Date;
+  clientId?: string;
+  serviceId?: string;
+  isFree: boolean;
+  appointmentId?: string;
+}

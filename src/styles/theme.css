@@ -203,6 +203,128 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   background: rgb(200 165 184 / 12%);
 }
 
+.glass {
+  backdrop-filter: blur(10px);
+  background: rgb(255 255 255 / 70%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 6%);
+}
+
+.slots-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.week-calendar-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--crm-border);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 34%);
+  backdrop-filter: blur(10px);
+}
+
+.week-calendar {
+  display: grid;
+  grid-template-columns: 62px repeat(7, minmax(104px, 1fr));
+  grid-template-rows: 48px repeat(var(--week-rows), 48px);
+  min-width: 790px;
+  position: relative;
+}
+
+.week-calendar__corner,
+.week-calendar__day,
+.week-calendar__time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-bottom: 1px solid rgb(120 110 120 / 14%);
+  border-right: 1px solid rgb(120 110 120 / 14%);
+}
+
+.week-calendar__day {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: rgb(255 255 255 / 78%);
+  color: var(--vkui--color_text_primary, #333);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.week-calendar__time {
+  grid-column: 1;
+  color: var(--vkui--color_text_secondary, var(--crm-muted));
+  font-size: 11px;
+  background: rgb(255 255 255 / 34%);
+}
+
+.slot-cell {
+  z-index: 1;
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid rgb(120 110 120 / 14%);
+  border-bottom: 1px solid rgb(120 110 120 / 14%);
+  background: rgb(255 255 255 / 46%);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.slot-cell:hover,
+.slot-cell:focus-visible {
+  background: rgb(200 165 184 / 22%);
+  outline: none;
+}
+
+.appointment-block {
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  margin: 3px;
+  padding: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid rgb(200 165 184 / 60%);
+  border-radius: 8px;
+  background: rgb(200 165 184 / 80%);
+  color: #302531;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.appointment-block:hover,
+.appointment-block:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 12%);
+  outline: none;
+}
+
+.appointment-block--empty {
+  background: rgb(130 130 150 / 72%);
+  color: #fff;
+}
+
+.appointment-block strong,
+.appointment-block span,
+.appointment-block small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appointment-block small {
+  opacity: 0.75;
+}
+
 @media (max-width: 480px) {
   .crm-grid {
     min-width: 520px;
@@ -210,5 +332,9 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
 
   .crm-grid__cell {
     padding: 12px;
+  }
+
+  .week-calendar {
+    grid-template-columns: 52px repeat(7, 104px);
   }
 }

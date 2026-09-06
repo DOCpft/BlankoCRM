@@ -8,6 +8,7 @@ import {
   ModalPage,
   ModalPageHeader,
   ModalRoot,
+  Select,
 } from '@vkontakte/vkui';
 
 export interface EntityFormField {
@@ -17,6 +18,7 @@ export interface EntityFormField {
   type?: string;
   required?: boolean;
   validate?: (value: string) => string | undefined;
+  options?: Array<{ value: string; label: string }>;
 }
 
 interface EntityFormModalProps {
@@ -86,28 +88,37 @@ export const EntityFormModal: FC<EntityFormModalProps> = ({
           <FormLayoutGroup>
             {fields.map((field) => (
               <FormItem key={field.name} top={field.label} required={field.required}>
-                <Input
-                  name={field.name}
-                  type={field.type}
-                  value={values[field.name] || ''}
-                  placeholder={field.placeholder}
-                  required={field.required}
-                  status={errors[field.name] ? 'error' : undefined}
-                  onChange={(event) =>
-                    {
+                {field.type === 'select' ? (
+                  <Select
+                    name={field.name}
+                    value={values[field.name] || ''}
+                    placeholder={field.placeholder}
+                    required={field.required}
+                    status={errors[field.name] ? 'error' : undefined}
+                    options={field.options || []}
+                    onChange={(event) =>
                       setValues((currentValues) => ({
                         ...currentValues,
                         [field.name]: event.target.value,
-                      }));
-                      setErrors((currentErrors) => {
-                        if (!currentErrors[field.name]) return currentErrors;
-                        const nextErrors = { ...currentErrors };
-                        delete nextErrors[field.name];
-                        return nextErrors;
-                      });
+                      }))
                     }
-                  }
-                />
+                  />
+                ) : (
+                  <Input
+                    name={field.name}
+                    type={field.type}
+                    value={values[field.name] || ''}
+                    placeholder={field.placeholder}
+                    required={field.required}
+                    status={errors[field.name] ? 'error' : undefined}
+                    onChange={(event) =>
+                      setValues((currentValues) => ({
+                        ...currentValues,
+                        [field.name]: event.target.value,
+                      }))
+                    }
+                  />
+                )}
                 {errors[field.name] && <div className="crm-form-error">{errors[field.name]}</div>}
               </FormItem>
             ))}
