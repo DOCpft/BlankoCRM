@@ -150,6 +150,12 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   padding-bottom: 8px
 }
 
+.crm-form-error {
+  margin-top: 4px;
+  color: var(--vkui--color_text_negative, #c62828);
+  font-size: 13px;
+}
+
 /* Shared data grid for clients and services */
 .crm-grid-wrap {
   width: 100%;

@@ -1,11 +1,12 @@
-import { FC, useState } from 'react';
+import { FC } from 'react';
 import { Button, Div, Group, Header, NavIdProps, Panel, PanelHeader, Placeholder } from '@vkontakte/vkui';
 
 import { EntityFormModal } from '../components/EntityFormModal';
 import { DataGrid } from '../components/DataGrid';
+import { useEntityList } from '../hooks/useEntityList';
 
 interface Client {
-  id: number;
+  id: string;
   name: string;
   phone?: string;
   network: string;
@@ -14,46 +15,29 @@ interface Client {
 export interface ClientsProps extends NavIdProps {}
 
 export const Clients: FC<ClientsProps> = ({ id }) => {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-
-  const handleAddClient = (values: Record<string, string>) => {
-    setClients((currentClients) => [
-      ...currentClients,
-      {
-        id: Date.now(),
-        name: values.name.trim(),
-        phone: values.phone.trim() || undefined,
-        network: values.network.trim(),
-      },
-    ]);
-    setIsFormOpen(false);
-  };
-
-  const handleEditClient = (values: Record<string, string>) => {
-    if (!selectedClient) return;
-
-    setClients((currentClients) =>
-      currentClients.map((client) =>
-        client.id === selectedClient.id
-          ? {
-              ...client,
-              name: values.name.trim(),
-              phone: values.phone.trim() || undefined,
-              network: values.network.trim(),
-            }
-          : client,
-      ),
-    );
-    setSelectedClient(null);
-  };
-
-  const handleDeleteClient = () => {
-    if (!selectedClient) return;
-    setClients((currentClients) => currentClients.filter((client) => client.id !== selectedClient.id));
-    setSelectedClient(null);
-  };
+  const {
+    entities: clients,
+    isFormOpen,
+    selectedEntity: selectedClient,
+    openForm,
+    closeForm,
+    handleAdd,
+    handleEdit,
+    handleDelete,
+  } = useEntityList<Client>({
+    createEntity: (values, entityId) => ({
+      id: entityId,
+      name: values.name.trim(),
+      phone: values.phone.trim() || undefined,
+      network: values.network.trim(),
+    }),
+    updateEntity: (client, values) => ({
+      ...client,
+      name: values.name.trim(),
+      phone: values.phone.trim() || undefined,
+      network: values.network.trim(),
+    }),
+  });
 
   return (
     <Panel id={id}>
@@ -61,7 +45,7 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
         <div style={{ width: '100%', textAlign: 'center' }}>Клиенты</div>
       </PanelHeader>
       <Div>
-        <Button size="l" mode="primary" onClick={() => setIsFormOpen(true)}>
+        <Button size="l" mode="primary" onClick={() => openForm()}>
           Добавить клиента
         </Button>
       </Div>
@@ -82,7 +66,7 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
               }))}
               onRowClick={(clientId) => {
                 const client = clients.find((item) => item.id === clientId);
-                if (client) setSelectedClient(client);
+                if (client) openForm(client);
               }}
             />
           )}
@@ -92,8 +76,8 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
         id="add-client"
         title="Новый клиент"
         active={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleAddClient}
+        onClose={closeForm}
+        onSubmit={handleAdd}
         fields={[
           { name: 'name', label: 'Имя', placeholder: 'Имя клиента', required: true },
           { name: 'network', label: 'Соц. сеть', placeholder: 'Например, VK или Telegram', required: true },
@@ -110,9 +94,9 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
             phone: selectedClient.phone || '',
             network: selectedClient.network || '',
           }}
-          onClose={() => setSelectedClient(null)}
-          onSubmit={handleEditClient}
-          onDelete={handleDeleteClient}
+          onClose={closeForm}
+          onSubmit={handleEdit}
+          onDelete={handleDelete}
           fields={[
             { name: 'name', label: 'Имя', placeholder: 'Имя клиента', required: true },
             { name: 'phone', label: 'Телефон', placeholder: '+7 ...', type: 'tel', required: true },

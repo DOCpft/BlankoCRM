@@ -1,4 +1,4 @@
-import { FC, FormEvent, ReactNode, useEffect, useState } from 'react';
+import { FC, FormEvent, ReactNode, useState } from 'react';
 import {
   Button,
   Div,
@@ -16,6 +16,7 @@ export interface EntityFormField {
   placeholder?: string;
   type?: string;
   required?: boolean;
+  validate?: (value: string) => string | undefined;
 }
 
 interface EntityFormModalProps {
@@ -41,21 +42,26 @@ export const EntityFormModal: FC<EntityFormModalProps> = ({
   onDelete,
 }) => {
   const [values, setValues] = useState<Record<string, string>>(initialValues);
-
-  useEffect(() => {
-    if (active) {
-      setValues(initialValues);
-    }
-  }, [active]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const hasEmptyRequiredField = fields.some(
-      (field) => field.required && !values[field.name]?.trim(),
-    );
+    const nextErrors = fields.reduce<Record<string, string>>((fieldErrors, field) => {
+      const value = values[field.name]?.trim() || '';
 
-    if (hasEmptyRequiredField) {
+      if (field.required && !value) {
+        fieldErrors[field.name] = 'Заполните поле';
+      } else if (field.validate) {
+        const error = field.validate(value);
+        if (error) fieldErrors[field.name] = error;
+      }
+
+      return fieldErrors;
+    }, {});
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
 
@@ -65,6 +71,7 @@ export const EntityFormModal: FC<EntityFormModalProps> = ({
 
   const handleClose = () => {
     setValues({});
+    setErrors({});
     onClose();
   };
 
@@ -85,13 +92,23 @@ export const EntityFormModal: FC<EntityFormModalProps> = ({
                   value={values[field.name] || ''}
                   placeholder={field.placeholder}
                   required={field.required}
+                  status={errors[field.name] ? 'error' : undefined}
                   onChange={(event) =>
-                    setValues((currentValues) => ({
-                      ...currentValues,
-                      [field.name]: event.target.value,
-                    }))
+                    {
+                      setValues((currentValues) => ({
+                        ...currentValues,
+                        [field.name]: event.target.value,
+                      }));
+                      setErrors((currentErrors) => {
+                        if (!currentErrors[field.name]) return currentErrors;
+                        const nextErrors = { ...currentErrors };
+                        delete nextErrors[field.name];
+                        return nextErrors;
+                      });
+                    }
                   }
                 />
+                {errors[field.name] && <div className="crm-form-error">{errors[field.name]}</div>}
               </FormItem>
             ))}
           </FormLayoutGroup>

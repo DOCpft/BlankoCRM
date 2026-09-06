@@ -1,11 +1,12 @@
-import { FC, useState } from 'react';
+import { FC } from 'react';
 import { Button, Div, Group, Header, NavIdProps, Panel, PanelHeader, Placeholder } from '@vkontakte/vkui';
 
 import { EntityFormModal } from '../components/EntityFormModal';
 import { DataGrid } from '../components/DataGrid';
+import { useEntityList } from '../hooks/useEntityList';
 
 interface Service {
-  id: number;
+  id: string;
   name: string;
   price: number;
   duration: number;
@@ -14,49 +15,41 @@ interface Service {
 
 export interface ServicesProps extends NavIdProps {}
 
+const validateNonNegativeNumber = (value: string): string | undefined => {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) return 'Введите число';
+  if (numberValue < 0) return 'Значение не может быть отрицательным';
+
+  return undefined;
+};
+
 export const Services: FC<ServicesProps> = ({ id }) => {
-  const [services, setServices] = useState<Service[]>([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-
-  const handleAddService = (values: Record<string, string>) => {
-    setServices((currentServices) => [
-      ...currentServices,
-      {
-        id: Date.now(),
-        name: values.name.trim(),
-        price: Number(values.price),
-        duration: Number(values.duration),
-        description: values.description ? values.description.trim() : undefined,
-      },
-    ]);
-    setIsFormOpen(false);
-  };
-
-  const handleEditService = (values: Record<string, string>) => {
-    if (!selectedService) return;
-
-    setServices((currentServices) =>
-      currentServices.map((service) =>
-        service.id === selectedService.id
-          ? {
-              ...service,
-              name: values.name.trim(),
-              price: Number(values.price),
-              duration: Number(values.duration),
-              description: values.description.trim() || undefined,
-            }
-          : service,
-      ),
-    );
-    setSelectedService(null);
-  };
-
-  const handleDeleteService = () => {
-    if (!selectedService) return;
-    setServices((currentServices) => currentServices.filter((service) => service.id !== selectedService.id));
-    setSelectedService(null);
-  };
+  const {
+    entities: services,
+    isFormOpen,
+    selectedEntity: selectedService,
+    openForm,
+    closeForm,
+    handleAdd,
+    handleEdit,
+    handleDelete,
+  } = useEntityList<Service>({
+    createEntity: (values, entityId) => ({
+      id: entityId,
+      name: values.name.trim(),
+      price: Number(values.price),
+      duration: Number(values.duration),
+      description: values.description.trim() || undefined,
+    }),
+    updateEntity: (service, values) => ({
+      ...service,
+      name: values.name.trim(),
+      price: Number(values.price),
+      duration: Number(values.duration),
+      description: values.description.trim() || undefined,
+    }),
+  });
 
   return (
     <Panel id={id}>
@@ -64,7 +57,7 @@ export const Services: FC<ServicesProps> = ({ id }) => {
         <div style={{ width: '100%', textAlign: 'center' }}>Услуги</div>
       </PanelHeader>
       <Div>
-        <Button size="l" mode="primary" onClick={() => setIsFormOpen(true)}>
+        <Button size="l" mode="primary" onClick={() => openForm()}>
           Добавить услугу
         </Button>
       </Div>
@@ -84,7 +77,7 @@ export const Services: FC<ServicesProps> = ({ id }) => {
               }))}
               onRowClick={(serviceId) => {
                 const service = services.find((item) => item.id === serviceId);
-                if (service) setSelectedService(service);
+                if (service) openForm(service);
               }}
             />
           )}
@@ -94,12 +87,12 @@ export const Services: FC<ServicesProps> = ({ id }) => {
         id="add-service"
         title="Новая услуга"
         active={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleAddService}
+        onClose={closeForm}
+        onSubmit={handleAdd}
         fields={[
           { name: 'name', label: 'Название', placeholder: 'Название услуги', required: true, type: 'text' },
-          { name: 'price', label: 'Стоимость', placeholder: 'Например, 1500 ₽', required: true, type: 'number' },
-          { name: 'duration', label: 'Длительность', placeholder: 'Например, 1 час', required: true, type: 'number' },
+          { name: 'price', label: 'Стоимость', placeholder: 'Например, 1500 ₽', required: true, type: 'number', validate: validateNonNegativeNumber },
+          { name: 'duration', label: 'Длительность', placeholder: 'Например, 1 час', required: true, type: 'number', validate: validateNonNegativeNumber },
           { name: 'description', label: 'Описание', placeholder: 'Коротко об услуге', required: false, type: 'text' },
         ]}
       />
@@ -114,13 +107,13 @@ export const Services: FC<ServicesProps> = ({ id }) => {
             duration: String(selectedService.duration),
             description: selectedService.description || '',
           }}
-          onClose={() => setSelectedService(null)}
-          onSubmit={handleEditService}
-          onDelete={handleDeleteService}
+          onClose={closeForm}
+          onSubmit={handleEdit}
+          onDelete={handleDelete}
           fields={[
             { name: 'name', label: 'Название', placeholder: 'Название услуги', required: true, type: 'text' },
-            { name: 'price', label: 'Стоимость', placeholder: 'Например, 1500 ₽', required: true, type: 'number' },
-            { name: 'duration', label: 'Длительность', placeholder: 'Например, 1 час', required: true, type: 'number' },
+            { name: 'price', label: 'Стоимость', placeholder: 'Например, 1500 ₽', required: true, type: 'number', validate: validateNonNegativeNumber },
+            { name: 'duration', label: 'Длительность', placeholder: 'Например, 1 час', required: true, type: 'number', validate: validateNonNegativeNumber },
             { name: 'description', label: 'Описание', placeholder: 'Коротко об услуге', required: false, type: 'text' },
           ]}
         />

@@ -7,8 +7,8 @@ export interface DataGridColumn {
 
 interface DataGridProps {
   columns: DataGridColumn[];
-  rows: Array<{ id: number; cells: ReactNode[] }>;
-  onRowClick?: (rowId: number) => void;
+  rows: Array<{ id: string; cells: ReactNode[] }>;
+  onRowClick?: (rowId: string) => void;
 }
 
 export const DataGrid: FC<DataGridProps> = ({ columns, rows, onRowClick }) => {
