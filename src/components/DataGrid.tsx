@@ -8,9 +8,10 @@ export interface DataGridColumn {
 interface DataGridProps {
   columns: DataGridColumn[];
   rows: Array<{ id: number; cells: ReactNode[] }>;
+  onRowClick?: (rowId: number) => void;
 }
 
-export const DataGrid: FC<DataGridProps> = ({ columns, rows }) => {
+export const DataGrid: FC<DataGridProps> = ({ columns, rows, onRowClick }) => {
   return (
     <div className="crm-grid-wrap" role="region" aria-label="Список">
       <div
@@ -26,7 +27,19 @@ export const DataGrid: FC<DataGridProps> = ({ columns, rows }) => {
           ))}
         </div>
         {rows.map((row) => (
-          <div className="crm-grid__row" role="row" key={row.id}>
+          <div
+            className={`crm-grid__row${onRowClick ? ' crm-grid__row--interactive' : ''}`}
+            role={onRowClick ? 'button' : 'row'}
+            tabIndex={onRowClick ? 0 : undefined}
+            key={row.id}
+            onClick={() => onRowClick?.(row.id)}
+            onKeyDown={(event) => {
+              if (onRowClick && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                onRowClick(row.id);
+              }
+            }}
+          >
             {row.cells.map((cell, index) => (
               <div className="crm-grid__cell" role="cell" key={`${row.id}-${columns[index].key}`}>
                 {cell || '—'}

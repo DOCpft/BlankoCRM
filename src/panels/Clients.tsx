@@ -8,7 +8,7 @@ interface Client {
   id: number;
   name: string;
   phone?: string;
-  network?: string;
+  network: string;
 }
 
 export interface ClientsProps extends NavIdProps {}
@@ -16,6 +16,7 @@ export interface ClientsProps extends NavIdProps {}
 export const Clients: FC<ClientsProps> = ({ id }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   const handleAddClient = (values: Record<string, string>) => {
     setClients((currentClients) => [
@@ -24,10 +25,34 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
         id: Date.now(),
         name: values.name.trim(),
         phone: values.phone.trim() || undefined,
-      network: values.network.trim() || undefined,
+        network: values.network.trim(),
       },
     ]);
     setIsFormOpen(false);
+  };
+
+  const handleEditClient = (values: Record<string, string>) => {
+    if (!selectedClient) return;
+
+    setClients((currentClients) =>
+      currentClients.map((client) =>
+        client.id === selectedClient.id
+          ? {
+              ...client,
+              name: values.name.trim(),
+              phone: values.phone.trim() || undefined,
+              network: values.network.trim(),
+            }
+          : client,
+      ),
+    );
+    setSelectedClient(null);
+  };
+
+  const handleDeleteClient = () => {
+    if (!selectedClient) return;
+    setClients((currentClients) => currentClients.filter((client) => client.id !== selectedClient.id));
+    setSelectedClient(null);
   };
 
   return (
@@ -55,6 +80,10 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
                 id: client.id,
                 cells: [client.name, client.phone, client.network],
               }))}
+              onRowClick={(clientId) => {
+                const client = clients.find((item) => item.id === clientId);
+                if (client) setSelectedClient(client);
+              }}
             />
           )}
         </Div>
@@ -67,10 +96,30 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
         onSubmit={handleAddClient}
         fields={[
           { name: 'name', label: 'Имя', placeholder: 'Имя клиента', required: true },
-          { name: 'phone', label: 'Телефон', placeholder: '+7 ...', type: 'tel', required: true },
-          { name: 'network', label: 'Соц. сеть', placeholder: 'Например, VK или Telegram' },
+          { name: 'network', label: 'Соц. сеть', placeholder: 'Например, VK или Telegram', required: true },
+          { name: 'phone', label: 'Телефон', placeholder: '+7 ...', type: 'tel', required: false },
         ]}
       />
+      {selectedClient && (
+        <EntityFormModal
+          id="edit-client"
+          title="Карточка клиента"
+          active
+          initialValues={{
+            name: selectedClient.name,
+            phone: selectedClient.phone || '',
+            network: selectedClient.network || '',
+          }}
+          onClose={() => setSelectedClient(null)}
+          onSubmit={handleEditClient}
+          onDelete={handleDeleteClient}
+          fields={[
+            { name: 'name', label: 'Имя', placeholder: 'Имя клиента', required: true },
+            { name: 'phone', label: 'Телефон', placeholder: '+7 ...', type: 'tel', required: true },
+            { name: 'network', label: 'Соц. сеть', placeholder: 'Например, VK или Telegram' },
+          ]}
+        />
+      )}
     </Panel>
   );
 };

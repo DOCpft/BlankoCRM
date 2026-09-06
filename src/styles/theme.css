@@ -188,6 +188,15 @@ html, body, #root, .vkui__AppRoot, .vkui__split-layout {
   border-bottom: 0;
 }
 
+.crm-grid__row--interactive {
+  cursor: pointer;
+}
+
+.crm-grid__row--interactive:hover .crm-grid__cell,
+.crm-grid__row--interactive:focus-visible .crm-grid__cell {
+  background: rgb(200 165 184 / 12%);
+}
+
 @media (max-width: 480px) {
   .crm-grid {
     min-width: 520px;

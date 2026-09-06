@@ -17,6 +17,7 @@ export interface ServicesProps extends NavIdProps {}
 export const Services: FC<ServicesProps> = ({ id }) => {
   const [services, setServices] = useState<Service[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const handleAddService = (values: Record<string, string>) => {
     setServices((currentServices) => [
@@ -30,6 +31,31 @@ export const Services: FC<ServicesProps> = ({ id }) => {
       },
     ]);
     setIsFormOpen(false);
+  };
+
+  const handleEditService = (values: Record<string, string>) => {
+    if (!selectedService) return;
+
+    setServices((currentServices) =>
+      currentServices.map((service) =>
+        service.id === selectedService.id
+          ? {
+              ...service,
+              name: values.name.trim(),
+              price: Number(values.price),
+              duration: Number(values.duration),
+              description: values.description.trim() || undefined,
+            }
+          : service,
+      ),
+    );
+    setSelectedService(null);
+  };
+
+  const handleDeleteService = () => {
+    if (!selectedService) return;
+    setServices((currentServices) => currentServices.filter((service) => service.id !== selectedService.id));
+    setSelectedService(null);
   };
 
   return (
@@ -56,6 +82,10 @@ export const Services: FC<ServicesProps> = ({ id }) => {
                 id: service.id,
                 cells: [service.name, `${service.price} ₽`],
               }))}
+              onRowClick={(serviceId) => {
+                const service = services.find((item) => item.id === serviceId);
+                if (service) setSelectedService(service);
+              }}
             />
           )}
         </Div>
@@ -73,6 +103,28 @@ export const Services: FC<ServicesProps> = ({ id }) => {
           { name: 'description', label: 'Описание', placeholder: 'Коротко об услуге', required: false, type: 'text' },
         ]}
       />
+      {selectedService && (
+        <EntityFormModal
+          id="edit-service"
+          title="Карточка услуги"
+          active
+          initialValues={{
+            name: selectedService.name,
+            price: String(selectedService.price),
+            duration: String(selectedService.duration),
+            description: selectedService.description || '',
+          }}
+          onClose={() => setSelectedService(null)}
+          onSubmit={handleEditService}
+          onDelete={handleDeleteService}
+          fields={[
+            { name: 'name', label: 'Название', placeholder: 'Название услуги', required: true, type: 'text' },
+            { name: 'price', label: 'Стоимость', placeholder: 'Например, 1500 ₽', required: true, type: 'number' },
+            { name: 'duration', label: 'Длительность', placeholder: 'Например, 1 час', required: true, type: 'number' },
+            { name: 'description', label: 'Описание', placeholder: 'Коротко об услуге', required: false, type: 'text' },
+          ]}
+        />
+      )}
     </Panel>
   );
 };

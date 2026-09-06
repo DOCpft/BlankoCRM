@@ -1,4 +1,4 @@
-import { FC, FormEvent, ReactNode, useState } from 'react';
+import { FC, FormEvent, ReactNode, useEffect, useState } from 'react';
 import {
   Button,
   Div,
@@ -25,6 +25,8 @@ interface EntityFormModalProps {
   active: boolean;
   onClose: () => void;
   onSubmit: (values: Record<string, string>) => void;
+  initialValues?: Record<string, string>;
+  onDelete?: () => void;
   children?: ReactNode;
 }
 
@@ -35,8 +37,16 @@ export const EntityFormModal: FC<EntityFormModalProps> = ({
   active,
   onClose,
   onSubmit,
+  initialValues = {},
+  onDelete,
 }) => {
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(initialValues);
+
+  useEffect(() => {
+    if (active) {
+      setValues(initialValues);
+    }
+  }, [active]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -85,13 +95,18 @@ export const EntityFormModal: FC<EntityFormModalProps> = ({
               </FormItem>
             ))}
           </FormLayoutGroup>
-          <Div style={{ display: 'flex', gap: 8 }}>
+          <Div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button size="l" stretched mode="primary" type="submit">
               Сохранить
             </Button>
             <Button size="l" stretched mode="secondary" type="button" onClick={handleClose}>
               Отмена
             </Button>
+            {onDelete && (
+              <Button size="l" stretched mode="tertiary" appearance="negative" type="button" onClick={onDelete}>
+                Удалить
+              </Button>
+            )}
           </Div>
         </form>
       </ModalPage>
