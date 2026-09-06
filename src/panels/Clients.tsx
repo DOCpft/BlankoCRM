@@ -3,41 +3,43 @@ import { Button, Div, Group, Header, NavIdProps, Panel, PanelHeader, Placeholder
 
 import { EntityFormModal } from '../components/EntityFormModal';
 import { DataGrid } from '../components/DataGrid';
-import { useEntityList } from '../hooks/useEntityList';
-
-interface Client {
-  id: string;
-  name: string;
-  phone?: string;
-  network: string;
-}
+import { useCrmStore } from '../store/useCrmStore';
+import { Client } from '../types';
+import { useModal } from '../hooks/useModal';
 
 export interface ClientsProps extends NavIdProps {}
 
 export const Clients: FC<ClientsProps> = ({ id }) => {
-  const {
-    entities: clients,
-    isFormOpen,
-    selectedEntity: selectedClient,
-    openForm,
-    closeForm,
-    handleAdd,
-    handleEdit,
-    handleDelete,
-  } = useEntityList<Client>({
-    createEntity: (values, entityId) => ({
-      id: entityId,
+  const clients = useCrmStore((state) => state.clients);
+  const addClient = useCrmStore((state) => state.addClient);
+  const updateClient = useCrmStore((state) => state.updateClient);
+  const deleteClient = useCrmStore((state) => state.deleteClient);
+  const clientModal = useModal<Client>();
+
+  const handleAdd = (values: Record<string, string>) => {
+    addClient({
       name: values.name.trim(),
       phone: values.phone.trim() || undefined,
       network: values.network.trim(),
-    }),
-    updateEntity: (client, values) => ({
-      ...client,
+    });
+    clientModal.close();
+  };
+
+  const handleEdit = (values: Record<string, string>) => {
+    if (!clientModal.selected) return;
+    updateClient(clientModal.selected.id, {
       name: values.name.trim(),
       phone: values.phone.trim() || undefined,
       network: values.network.trim(),
-    }),
-  });
+    });
+    clientModal.close();
+  };
+
+  const handleDelete = () => {
+    if (!clientModal.selected) return;
+    deleteClient(clientModal.selected.id);
+    clientModal.close();
+  };
 
   return (
     <Panel id={id}>
@@ -45,7 +47,7 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
         <div style={{ width: '100%', textAlign: 'center' }}>Клиенты</div>
       </PanelHeader>
       <Div>
-        <Button size="l" mode="primary" onClick={() => openForm()}>
+        <Button size="l" mode="primary" onClick={() => clientModal.open()}>
           Добавить клиента
         </Button>
       </Div>
@@ -66,7 +68,7 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
               }))}
               onRowClick={(clientId) => {
                 const client = clients.find((item) => item.id === clientId);
-                if (client) openForm(client);
+                if (client) clientModal.open(client);
               }}
             />
           )}
@@ -75,8 +77,8 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
       <EntityFormModal
         id="add-client"
         title="Новый клиент"
-        active={isFormOpen}
-        onClose={closeForm}
+        active={clientModal.isOpen && !clientModal.selected}
+        onClose={clientModal.close}
         onSubmit={handleAdd}
         fields={[
           { name: 'name', label: 'Имя', placeholder: 'Имя клиента', required: true },
@@ -84,17 +86,17 @@ export const Clients: FC<ClientsProps> = ({ id }) => {
           { name: 'phone', label: 'Телефон', placeholder: '+7 ...', type: 'tel', required: false },
         ]}
       />
-      {selectedClient && (
+      {clientModal.selected && (
         <EntityFormModal
           id="edit-client"
           title="Карточка клиента"
-          active
+          active={clientModal.isOpen}
           initialValues={{
-            name: selectedClient.name,
-            phone: selectedClient.phone || '',
-            network: selectedClient.network || '',
+            name: clientModal.selected.name,
+            phone: clientModal.selected.phone || '',
+            network: clientModal.selected.network || '',
           }}
-          onClose={closeForm}
+          onClose={clientModal.close}
           onSubmit={handleEdit}
           onDelete={handleDelete}
           fields={[

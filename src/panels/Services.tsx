@@ -3,15 +3,9 @@ import { Button, Div, Group, Header, NavIdProps, Panel, PanelHeader, Placeholder
 
 import { EntityFormModal } from '../components/EntityFormModal';
 import { DataGrid } from '../components/DataGrid';
-import { useEntityList } from '../hooks/useEntityList';
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-  duration: number;
-  description?: string;
-}
+import { useCrmStore } from '../store/useCrmStore';
+import { Service } from '../types';
+import { useModal } from '../hooks/useModal';
 
 export interface ServicesProps extends NavIdProps {}
 
@@ -25,31 +19,38 @@ const validateNonNegativeNumber = (value: string): string | undefined => {
 };
 
 export const Services: FC<ServicesProps> = ({ id }) => {
-  const {
-    entities: services,
-    isFormOpen,
-    selectedEntity: selectedService,
-    openForm,
-    closeForm,
-    handleAdd,
-    handleEdit,
-    handleDelete,
-  } = useEntityList<Service>({
-    createEntity: (values, entityId) => ({
-      id: entityId,
+  const services = useCrmStore((state) => state.services);
+  const addService = useCrmStore((state) => state.addService);
+  const updateService = useCrmStore((state) => state.updateService);
+  const deleteService = useCrmStore((state) => state.deleteService);
+  const serviceModal = useModal<Service>();
+
+  const handleAdd = (values: Record<string, string>) => {
+    addService({
       name: values.name.trim(),
       price: Number(values.price),
       duration: Number(values.duration),
       description: values.description.trim() || undefined,
-    }),
-    updateEntity: (service, values) => ({
-      ...service,
+    });
+    serviceModal.close();
+  };
+
+  const handleEdit = (values: Record<string, string>) => {
+    if (!serviceModal.selected) return;
+    updateService(serviceModal.selected.id, {
       name: values.name.trim(),
       price: Number(values.price),
       duration: Number(values.duration),
       description: values.description.trim() || undefined,
-    }),
-  });
+    });
+    serviceModal.close();
+  };
+
+  const handleDelete = () => {
+    if (!serviceModal.selected) return;
+    deleteService(serviceModal.selected.id);
+    serviceModal.close();
+  };
 
   return (
     <Panel id={id}>
@@ -57,7 +58,7 @@ export const Services: FC<ServicesProps> = ({ id }) => {
         <div style={{ width: '100%', textAlign: 'center' }}>Услуги</div>
       </PanelHeader>
       <Div>
-        <Button size="l" mode="primary" onClick={() => openForm()}>
+        <Button size="l" mode="primary" onClick={() => serviceModal.open()}>
           Добавить услугу
         </Button>
       </Div>
@@ -77,7 +78,7 @@ export const Services: FC<ServicesProps> = ({ id }) => {
               }))}
               onRowClick={(serviceId) => {
                 const service = services.find((item) => item.id === serviceId);
-                if (service) openForm(service);
+                if (service) serviceModal.open(service);
               }}
             />
           )}
@@ -86,8 +87,8 @@ export const Services: FC<ServicesProps> = ({ id }) => {
       <EntityFormModal
         id="add-service"
         title="Новая услуга"
-        active={isFormOpen}
-        onClose={closeForm}
+        active={serviceModal.isOpen && !serviceModal.selected}
+        onClose={serviceModal.close}
         onSubmit={handleAdd}
         fields={[
           { name: 'name', label: 'Название', placeholder: 'Название услуги', required: true, type: 'text' },
@@ -96,18 +97,18 @@ export const Services: FC<ServicesProps> = ({ id }) => {
           { name: 'description', label: 'Описание', placeholder: 'Коротко об услуге', required: false, type: 'text' },
         ]}
       />
-      {selectedService && (
+      {serviceModal.selected && (
         <EntityFormModal
           id="edit-service"
           title="Карточка услуги"
-          active
+          active={serviceModal.isOpen}
           initialValues={{
-            name: selectedService.name,
-            price: String(selectedService.price),
-            duration: String(selectedService.duration),
-            description: selectedService.description || '',
+            name: serviceModal.selected.name,
+            price: String(serviceModal.selected.price),
+            duration: String(serviceModal.selected.duration),
+            description: serviceModal.selected.description || '',
           }}
-          onClose={closeForm}
+          onClose={serviceModal.close}
           onSubmit={handleEdit}
           onDelete={handleDelete}
           fields={[
