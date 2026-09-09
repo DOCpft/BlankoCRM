@@ -29,6 +29,7 @@ namespace BlankoCRM.Core.Entities
         public Salon? Salon { get; set; }
         public Client Client { get; set; }
         public ICollection<AppointmentService> AppointmentServices { get; set; }
+        public Schedule? Schedule { get; set; }
 
 
                 // Вычисляемые поля.
@@ -46,7 +47,8 @@ namespace BlankoCRM.Core.Entities
         Scheduled,   // Запланировано
         Completed,   // Выполнено
         Cancelled,   // Отменено мастером или клиентом
-        NoShow       // Клиент не пришёл
+        NoShow,      // Клиент не пришёл
+        Archived     // Архивирована без физического удаления
     }
 }
 

@@ -4,9 +4,8 @@ using System.Text;
 using BlankoCRM.Application.Abstract;
 using BlankoCRM.Core.Entities;
 using BlankoCRM.Core.Exceptions;
-using BlankoCRM.Infrastructure.Data;
+using BlankoCRM.Core.Interfaces;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -17,18 +16,18 @@ namespace BlankoCRM.Application.Services;
 /// </summary>
 public class AuthService : IAuthService
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
     private readonly IConfiguration _configuration;
 
     public AuthService(
-        AppDbContext dbContext,
+        IUnitOfWork unitOfWork,
         UserManager<AppUser> userManager,
         SignInManager<AppUser> signInManager,
         IConfiguration configuration)
     {
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
         _userManager = userManager;
         _signInManager = signInManager;
         _configuration = configuration;
@@ -46,9 +45,9 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow
         };
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
-        _dbContext.Organizations.Add(organization);
-        await _dbContext.SaveChangesAsync();
+        await using var transaction = await _unitOfWork.BeginTransactionAsync();
+        _unitOfWork.Add(organization);
+        await _unitOfWork.SaveChangesAsync();
 
         var user = new AppUser
         {

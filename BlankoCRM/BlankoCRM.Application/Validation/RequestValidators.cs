@@ -105,11 +105,14 @@ public sealed class UpdateAppointmentRequestValidator : AbstractValidator<Update
     }
 }
 
-public sealed class CreateSlotRequestValidator : AbstractValidator<CreateSlotRequest>
+public sealed class CreateFreeSlotRequestValidator : AbstractValidator<CreateFreeSlotRequest>
 {
-    public CreateSlotRequestValidator()
+    public CreateFreeSlotRequestValidator()
     {
-        RuleFor(request => request.slotTime).NotEmpty();
+        RuleFor(request => request.StartTime).NotEmpty();
+        RuleFor(request => request.EndTime)
+            .GreaterThan(request => request.StartTime)
+            .WithMessage("Время окончания должно быть позже времени начала.");
     }
 }
 
@@ -117,7 +120,10 @@ public sealed class UpdateSlotRequestValidator : AbstractValidator<UpdateSlotReq
 {
     public UpdateSlotRequestValidator()
     {
-        RuleFor(request => request.slotTime).NotEmpty().When(request => request.slotTime.HasValue);
+        RuleFor(request => request.EndTime)
+            .GreaterThan(request => request.StartTime)
+            .When(request => request.StartTime.HasValue && request.EndTime.HasValue)
+            .WithMessage("Время окончания должно быть позже времени начала.");
     }
 }
 
@@ -127,14 +133,13 @@ public sealed class CreateManySlotsRequestValidator : AbstractValidator<CreateMa
     {
         RuleFor(request => request.Slots).NotEmpty();
         RuleForEach(request => request.Slots)
-            .Must(slot => slot.slotTime != default)
-            .WithMessage("Slot time is required.");
+            .SetValidator(new CreateFreeSlotRequestValidator());
     }
 }
 
-public sealed class CreateSlotRequestListValidator : AbstractValidator<List<CreateSlotRequest>>
+public sealed class CreateFreeSlotRequestListValidator : AbstractValidator<List<CreateFreeSlotRequest>>
 {
-    public CreateSlotRequestListValidator(IValidator<CreateSlotRequest> slotValidator)
+    public CreateFreeSlotRequestListValidator(IValidator<CreateFreeSlotRequest> slotValidator)
     {
         RuleFor(requests => requests).NotEmpty();
         RuleForEach(requests => requests).SetValidator(slotValidator);

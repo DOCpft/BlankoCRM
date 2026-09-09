@@ -56,10 +56,16 @@ namespace BlankoCRM.Application.DTOs
     /// Р—Р°РїСЂРѕСЃ РЅР° РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµР№ Р·Р°РїРёСЃРё.
     /// </summary>
     public record UpdateAppointmentRequest(
+        Guid? ClientId,
+        List<ServiceInput>? Services,
         DateTime? StartTime,
+        DateTime? EndTime,
         AppointmentStatus? Status,
 
-        [MaxLength(500, ErrorMessage = "Р—Р°РјРµС‚РєРё РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 500 СЃРёРјРІРѕР»РѕРІ")]
-        string? Notes);
+        [MaxLength(500, ErrorMessage = "Заметки не могут быть длиннее 500 символов")]
+        string? Notes,
+        Guid? SalonId = null);
+
+    public record UpdateAppointmentStatusRequest(AppointmentStatus Status);
 }
 

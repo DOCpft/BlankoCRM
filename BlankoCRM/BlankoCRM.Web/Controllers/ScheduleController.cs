@@ -2,9 +2,7 @@
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Application.DTOs.Mapping;
 using AutoMapper;
-using BlankoCRM.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlankoCRM.Web.Controllers
@@ -24,9 +22,9 @@ namespace BlankoCRM.Web.Controllers
         }
 
         [HttpGet("{id:guid}", Name = "GetSlotById")]
-        public async Task<ActionResult<ScheduleDto>> GetSlotByIdAsync(Guid id)
+        public async Task<ActionResult<ScheduleDto>> GetSlotByIdAsync(Guid id, CancellationToken cancellationToken)
         {
-            var slot = await _scheduleService.GetSlotByIdAsync(id);
+            var slot = await _scheduleService.GetSlotByIdAsync(id, cancellationToken);
 
             return Ok(_mapper.Map<ScheduleDto>(slot));
         }
@@ -35,12 +33,12 @@ namespace BlankoCRM.Web.Controllers
         [HttpGet("get/period")]
         public async Task<ActionResult<List<ScheduleDto>>> GetScheduleByPeriod(
             [FromQuery] DateTime dtFrom,
-            [FromQuery] DateTime dtTo)
+            [FromQuery] DateTime dtTo, CancellationToken cancellationToken)
         {
             if (dtFrom >= dtTo)
                 return BadRequest("Дата начала должна быть меньше даты конца периода.");
 
-            var schedule = await _scheduleService.GetScheduleByPeriodAsync(dtFrom, dtTo);
+            var schedule = await _scheduleService.GetScheduleByPeriodAsync(dtFrom, dtTo, cancellationToken);
 
             var dtos = _mapper.Map<List<ScheduleDto>>(schedule);
 
@@ -48,22 +46,24 @@ namespace BlankoCRM.Web.Controllers
         }
 
 
-        [HttpPost("add")]
-        public async Task<ActionResult<ScheduleDto>> AddSlotAsync([FromBody] CreateSlotRequest createSlotRequest)
+        [HttpPost("free")]
+        public async Task<ActionResult<ScheduleDto>> AddFreeSlotAsync([FromBody] CreateFreeSlotRequest request, CancellationToken cancellationToken)
         {
-            var slot = await _scheduleService.AddSlotAsync(createSlotRequest.slotTime, createSlotRequest.AppointmentId);
-            if (slot == null)
-            {
-                return BadRequest();
-            }
+            var slot = await _scheduleService.AddFreeSlotAsync(request, cancellationToken);
             return CreatedAtAction("GetSlotById", new { id = slot.Id }, _mapper.Map<ScheduleDto>(slot));
-            
         }
 
-        [HttpPost("add/bulk")]
-        public async Task<ActionResult<List<ScheduleDto>>> AddSlotsAsync([FromBody] List<CreateSlotRequest> requests)
+        [HttpPost("occupied")]
+        public async Task<ActionResult<ScheduleDto>> AddOccupiedSlotAsync([FromBody] CreateOccupiedSlotRequest request, CancellationToken cancellationToken)
         {
-            var slots = await _scheduleService.AddSlotsAsync(requests);
+            var slot = await _scheduleService.AddOccupiedSlotAsync(request, cancellationToken);
+            return CreatedAtAction("GetSlotById", new { id = slot.Id }, _mapper.Map<ScheduleDto>(slot));
+        }
+
+        [HttpPost("free/bulk")]
+        public async Task<ActionResult<List<ScheduleDto>>> AddSlotsAsync([FromBody] List<CreateFreeSlotRequest> requests, CancellationToken cancellationToken)
+        {
+            var slots = await _scheduleService.AddSlotsAsync(requests, cancellationToken);
 
             var dtos = _mapper.Map<List<ScheduleDto>>(slots);
 
@@ -71,19 +71,19 @@ namespace BlankoCRM.Web.Controllers
         }
 
         [HttpDelete("{id:guid}")]
-        public async Task<IActionResult> DeleteSlotAsync(Guid id)
+        public async Task<IActionResult> DeleteSlotAsync(Guid id, CancellationToken cancellationToken)
         {
-            var isDeleted = await _scheduleService.RemoveSlotAsync(id);
+            var isDeleted = await _scheduleService.RemoveSlotAsync(id, cancellationToken);
 
             return Ok(isDeleted);
         }
 
         [HttpDelete("delete/bulk")]
-        public async Task<ActionResult<int>> DeleteScheduleAsync([FromBody] List<Guid> ids)
+        public async Task<ActionResult<int>> DeleteScheduleAsync([FromBody] List<Guid> ids, CancellationToken cancellationToken)
         {
             if(ids == null || !ids.Any()) return BadRequest("Запрос на удаление должен содержать хотя бы 1 элемент.");
 
-            var qtyRemoved = await _scheduleService.RemoveSlotsAsync(ids);
+            var qtyRemoved = await _scheduleService.RemoveSlotsAsync(ids, cancellationToken);
 
             if (qtyRemoved == 0) return NotFound();
             
@@ -91,9 +91,9 @@ namespace BlankoCRM.Web.Controllers
         }
 
         [HttpPut("{id:guid}")]
-        public async Task<IActionResult> UpdateSlotAsync(Guid id, [FromBody] UpdateSlotRequest updateSlotRequest)
+        public async Task<IActionResult> UpdateSlotAsync(Guid id, [FromBody] UpdateSlotRequest updateSlotRequest, CancellationToken cancellationToken)
         {
-            await _scheduleService.UpdateSlotAsync(id, updateSlotRequest.slotTime, updateSlotRequest.AppointmentId);
+            await _scheduleService.UpdateSlotAsync(id, updateSlotRequest, cancellationToken);
 
             return NoContent();
         }

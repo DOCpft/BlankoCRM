@@ -54,6 +54,7 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
         ConfigureService(modelBuilder);
         ConfigureAppointment(modelBuilder);
         ConfigureAppointmentService(modelBuilder);
+        ConfigureSchedule(modelBuilder);
         ConfigureIdentityEntities(modelBuilder);
     }
 
@@ -188,10 +189,30 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
     private void ConfigureSchedule(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Schedule>(entity =>
-            {
+        {
+            entity.HasKey(schedule => schedule.Id);
 
-            }
-        );
+            entity.HasIndex(schedule => schedule.OrganizationId);
+            entity.HasIndex(schedule => new { schedule.OrganizationId, schedule.SalonId, schedule.StartTime });
+            entity.HasIndex(schedule => schedule.AppointmentId).IsUnique();
+
+            entity.HasCheckConstraint("CK_Schedule_EndTime", "\"EndTime\" > \"StartTime\"");
+
+            entity.HasOne(schedule => schedule.Organization)
+                .WithMany()
+                .HasForeignKey(schedule => schedule.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(schedule => schedule.Salon)
+                .WithMany()
+                .HasForeignKey(schedule => schedule.SalonId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(schedule => schedule.Appointment)
+                .WithOne(appointment => appointment.Schedule)
+                .HasForeignKey<Schedule>(schedule => schedule.AppointmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     private static void ConfigureIdentityEntities(ModelBuilder modelBuilder)

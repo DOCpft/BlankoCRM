@@ -1,6 +1,7 @@
 using BlankoCRM.Core.Entities;
 using BlankoCRM.Core.Interfaces;
 using BlankoCRM.Infrastructure.Repositories;
+using BlankoCRM.Infrastructure.Data;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BlankoCRM.Infrastructure;
@@ -16,6 +17,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructureRepositories(this IServiceCollection services)
     {
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IScheduleRepository, ScheduleRepository>();
         services.AddScoped<IServiceRepository, ServiceRepository>();

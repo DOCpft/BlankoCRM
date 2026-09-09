@@ -16,7 +16,8 @@ namespace BlankoCRM.Core.Entities
         public Guid OrganizationId { get; set; }
         public Guid? SalonId { get; set; }
         public Guid? AppointmentId { get; set; }
-        public DateTime SlotTime { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 

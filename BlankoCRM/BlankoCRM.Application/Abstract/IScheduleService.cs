@@ -19,8 +19,9 @@ namespace BlankoCRM.Application.Abstract
         /// Item1 - Время слота, Item2 - Guid записи (appointment)
         /// </summary>
         /// <returns></returns>
-        public Task<List<Schedule>> AddSlotsAsync(List<CreateSlotRequest> addedSlots);
-        public Task<Schedule> AddSlotAsync(DateTime slotTime, Guid? appointment);
+        Task<List<Schedule>> AddSlotsAsync(List<CreateFreeSlotRequest> addedSlots, CancellationToken cancellationToken = default);
+        Task<Schedule> AddFreeSlotAsync(CreateFreeSlotRequest request, CancellationToken cancellationToken = default);
+        Task<Schedule> AddOccupiedSlotAsync(CreateOccupiedSlotRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Методы для удаления слотов
@@ -28,8 +29,8 @@ namespace BlankoCRM.Application.Abstract
         /// <param name="selectedSlot"></param>
         /// <exception cref="NotFoundException"> Если слот с указаным ID не найден</exception>
         /// <returns></returns>
-        public Task<bool> RemoveSlotAsync(Guid selectedSlot);
-        public Task<int> RemoveSlotsAsync(List<Guid> selectedSlots);
+        Task<bool> RemoveSlotAsync(Guid selectedSlot, CancellationToken cancellationToken = default);
+        Task<int> RemoveSlotsAsync(List<Guid> selectedSlots, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Методы для получения слотов
@@ -37,8 +38,8 @@ namespace BlankoCRM.Application.Abstract
         /// <param name="SlotId"></param>
         /// <exception cref="NotFoundException"> Если слот с указаным ID не найден</exception>
         /// <returns></returns>
-        public Task<Schedule> GetSlotByIdAsync(Guid SlotId);
-        public Task<List<Schedule>> GetScheduleByPeriodAsync(DateTime dateFrom, DateTime dateTo);
+        Task<Schedule> GetSlotByIdAsync(Guid SlotId, CancellationToken cancellationToken = default);
+        Task<List<Schedule>> GetScheduleByPeriodAsync(DateTime dateFrom, DateTime dateTo, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Метод обновления данных слота
@@ -48,7 +49,7 @@ namespace BlankoCRM.Application.Abstract
         /// <param name="appointmentId"></param>
         /// <exception cref="NotFoundException"> Если слот с указаным ID не найден</exception>
         /// <returns></returns>
-        public Task UpdateSlotAsync(Guid id, DateTime? slotTime,  Guid? appointmentId);
+        Task UpdateSlotAsync(Guid id, UpdateSlotRequest request, CancellationToken cancellationToken = default);
 
     }
 }

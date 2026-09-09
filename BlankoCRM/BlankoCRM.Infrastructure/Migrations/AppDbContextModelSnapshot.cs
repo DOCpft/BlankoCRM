@@ -387,13 +387,16 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("SalonId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("SlotTime")
+                    b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -401,13 +404,19 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AppointmentId");
+                    b.HasIndex("AppointmentId")
+                        .IsUnique();
 
                     b.HasIndex("OrganizationId");
 
                     b.HasIndex("SalonId");
 
-                    b.ToTable("Schedules");
+                    b.HasIndex("OrganizationId", "SalonId", "StartTime");
+
+                    b.ToTable("Schedules", t =>
+                        {
+                            t.HasCheckConstraint("CK_Schedule_EndTime", "\"EndTime\" > \"StartTime\"");
+                        });
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Service", b =>
@@ -690,8 +699,9 @@ namespace BlankoCRM.Infrastructure.Migrations
             modelBuilder.Entity("BlankoCRM.Core.Entities.Schedule", b =>
                 {
                     b.HasOne("BlankoCRM.Core.Entities.Appointment", "Appointment")
-                        .WithMany()
-                        .HasForeignKey("AppointmentId");
+                        .WithOne("Schedule")
+                        .HasForeignKey("BlankoCRM.Core.Entities.Schedule", "AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("BlankoCRM.Core.Entities.Organization", "Organization")
                         .WithMany()
@@ -701,7 +711,8 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasOne("BlankoCRM.Core.Entities.Salon", "Salon")
                         .WithMany()
-                        .HasForeignKey("SalonId");
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Appointment");
 
@@ -786,6 +797,8 @@ namespace BlankoCRM.Infrastructure.Migrations
             modelBuilder.Entity("BlankoCRM.Core.Entities.Appointment", b =>
                 {
                     b.Navigation("AppointmentServices");
+
+                    b.Navigation("Schedule");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Client", b =>

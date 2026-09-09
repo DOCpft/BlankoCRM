@@ -31,9 +31,75 @@ public sealed class ScheduleRepository : EfRepository<Schedule>, IScheduleReposi
             .AsNoTracking()
             .Include(schedule => schedule.Appointment)
             .ThenInclude(appointment => appointment!.AppointmentServices)
-            .Where(schedule => schedule.SlotTime >= dateFrom && schedule.SlotTime <= dateTo)
-            .OrderBy(schedule => schedule.SlotTime)
+            .Where(schedule => schedule.StartTime >= dateFrom && schedule.StartTime <= dateTo)
+            .OrderBy(schedule => schedule.StartTime)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Schedule?> GetSlotByAppointmentIdAsync(Guid appointmentId, CancellationToken cancellationToken = default)
+    {
+        return await DbContext.Schedules
+            .Include(schedule => schedule.Appointment)
+            .FirstOrDefaultAsync(schedule => schedule.AppointmentId == appointmentId, cancellationToken);
+    }
+
+    public Task<bool> HasOverlapAsync(
+        DateTime startTime,
+        DateTime endTime,
+        Guid organizationId,
+        Guid? salonId = null,
+        Guid? excludedSlotId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return DbContext.Schedules.AnyAsync(schedule =>
+            schedule.OrganizationId == organizationId
+            && schedule.SalonId == salonId
+            && (!excludedSlotId.HasValue || schedule.Id != excludedSlotId.Value)
+            && schedule.StartTime < endTime
+            && schedule.EndTime > startTime,
+            cancellationToken);
+    }
+
+    public Task<bool> HasOverlapWithOccupiedSlotsAsync(
+        DateTime startTime,
+        DateTime endTime,
+        Guid organizationId,
+        Guid? salonId = null,
+        Guid? excludedSlotId = null,
+        Guid? excludedAppointmentId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return DbContext.Schedules.AnyAsync(schedule =>
+            schedule.OrganizationId == organizationId
+            && schedule.SalonId == salonId
+            && schedule.AppointmentId.HasValue
+            && (!excludedSlotId.HasValue || schedule.Id != excludedSlotId.Value)
+            && (!excludedAppointmentId.HasValue || schedule.AppointmentId != excludedAppointmentId.Value)
+            && schedule.StartTime < endTime
+            && schedule.EndTime > startTime,
+            cancellationToken);
+    }
+
+    public async Task<int> DeleteFreeSlotsByTimeAsync(
+        DateTime startTime,
+        DateTime endTime,
+        Guid organizationId,
+        Guid? salonId = null,
+        Guid? excludedSlotId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var slots = await DbContext.Schedules
+            .Where(schedule =>
+                schedule.OrganizationId == organizationId
+                && schedule.SalonId == salonId
+                && schedule.AppointmentId == null
+                && (!excludedSlotId.HasValue || schedule.Id != excludedSlotId.Value)
+                && schedule.StartTime < endTime
+                && schedule.EndTime > startTime)
+            .ToListAsync(cancellationToken);
+
+        DbContext.Schedules.RemoveRange(slots);
+        return slots.Count;
     }
 
     public async Task AddRangeAsync(IEnumerable<Schedule> entities, CancellationToken cancellationToken = default)

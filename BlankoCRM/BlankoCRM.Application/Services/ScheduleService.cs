@@ -1,199 +1,209 @@
-﻿using BlankoCRM.Application.Abstract;
+using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Core.Entities;
-using BlankoCRM.Core.Interfaces;
 using BlankoCRM.Core.Exceptions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using BlankoCRM.Core.Interfaces;
 
-namespace BlankoCRM.Application.Services
+namespace BlankoCRM.Application.Services;
+
+public class ScheduleService : IScheduleService
 {
-    public class ScheduleService: IScheduleService
+    private readonly IScheduleRepository _scheduleRepository;
+    private readonly IAppointmentService _appointmentService;
+    private readonly IOrganizationContext _organizationContext;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public ScheduleService(
+        IScheduleRepository scheduleRepository,
+        IAppointmentService appointmentService,
+        IOrganizationContext organizationContext,
+        IUnitOfWork unitOfWork)
     {
-        private readonly IScheduleRepository _scheduleRepository;
-        private readonly IAppointmentRepository _appointmentRepository;
-        private readonly IOrganizationContext _organizationContext;
+        _scheduleRepository = scheduleRepository;
+        _appointmentService = appointmentService;
+        _organizationContext = organizationContext;
+        _unitOfWork = unitOfWork;
+    }
 
-        public ScheduleService(
-            IScheduleRepository scheduleRepository,
-            IAppointmentRepository appointmentRepository,
-            IOrganizationContext organizationContext)
+    public async Task<Schedule> AddFreeSlotAsync(CreateFreeSlotRequest request, CancellationToken cancellationToken = default)
+    {
+        var organizationId = GetOrganizationId();
+        if (await _scheduleRepository.HasOverlapAsync(
+            request.StartTime, request.EndTime, organizationId, request.SalonId))
         {
-            _scheduleRepository = scheduleRepository;
-            _appointmentRepository = appointmentRepository;
-            _organizationContext = organizationContext;
+            throw new ConflictException("Указанный интервал уже занят другим слотом.");
         }
 
-        public async Task<Schedule> AddSlotAsync(DateTime slotTime, Guid? appointmentId)
+        var slot = new Schedule
         {
-            
-            // Надо заполнять навигационное свойство, т.к. контрорллер возвращает ScheduleDto, и в нем есть AppointmentDto,
-            // и если присвоить чисто внешний ключ, то мы не сможем замапить Schedule к ScheduleDto в контроллере.
-            // Вернее сможем, но AppointmentDto там будет null, т.к. при заполнении внешнего ключа навигационное свойство не заполняется автоматом
-            var appointment = appointmentId.HasValue
-                ? await _appointmentRepository.GetByIdWithDetailsAsync(appointmentId.Value)
-                : null;
-            
-            var slot = new Schedule
-            {
-                SlotTime = slotTime,
-                AppointmentId = appointment?.Id,
-                Appointment = appointment,
-                OrganizationId = _organizationContext.GetCurrentOrganizationId()!.Value,
-                CreatedAt = DateTime.UtcNow,
-            };
-            
-            // На всякий случай пересчитываем старт и конец самой записи, если слот на другое время поставили
-            if (appointment != null)
-            {
-                var newEndTime = slotTime.AddMinutes((double)appointment.TotalDuration);
-                if (await _appointmentRepository.HasOverlapAsync(
-                    slotTime,
-                    newEndTime,
-                    appointment.OrganizationId,
-                    appointment.SalonId,
-                    appointment.Id))
-                {
-                    throw new ConflictException("Это время уже занято другой записью.");
-                }
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            SalonId = request.SalonId,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
+            CreatedAt = DateTime.UtcNow
+        };
 
-                appointment.StartTime = slotTime;
-                appointment.EndTime = newEndTime;
-            }
-                
-            return await _scheduleRepository.AddAsync(slot);
+        return await _scheduleRepository.AddAsync(slot);
+    }
+
+    public async Task<Schedule> AddOccupiedSlotAsync(CreateOccupiedSlotRequest request, CancellationToken cancellationToken = default)
+    {
+        var result = await _appointmentService.CreateWithScheduleAsync(
+            request.AppointmentData.ClientId,
+            request.AppointmentData.Services,
+            request.StartTime,
+            request.AppointmentData.Notes,
+            request.AppointmentData.SalonId,
+            cancellationToken);
+
+        return result.Schedule;
+    }
+
+    public async Task<List<Schedule>> AddSlotsAsync(List<CreateFreeSlotRequest> addedSlots, CancellationToken cancellationToken = default)
+    {
+        var slots = new List<Schedule>();
+        foreach (var request in addedSlots)
+        {
+            slots.Add(await AddFreeSlotAsync(request, cancellationToken));
         }
 
-        public async Task<List<Schedule>> AddSlotsAsync(List<CreateSlotRequest> addedSlots)
+        return slots;
+    }
+
+    public async Task<List<Schedule>> GetScheduleByPeriodAsync(DateTime dateFrom, DateTime dateTo, CancellationToken cancellationToken = default)
+    {
+        return (await _scheduleRepository.GetByPeriodAsync(dateFrom, dateTo, cancellationToken)).ToList();
+    }
+
+    public async Task<Schedule> GetSlotByIdAsync(Guid slotId, CancellationToken cancellationToken = default)
+    {
+        return await _scheduleRepository.GetByIdWithAppointmentAsync(slotId, cancellationToken)
+            ?? throw new NotFoundException($"Schedule with ID {slotId} was not found.");
+    }
+
+    public async Task<bool> RemoveSlotAsync(Guid selectedSlot, CancellationToken cancellationToken = default)
+    {
+        var slot = await GetSlotByIdAsync(selectedSlot, cancellationToken);
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        if (slot.Appointment is not null)
         {
-            // 1. Собираем все Id назначений, которые не null
-            var appointmentIds = addedSlots
-                .Where(slot => slot.AppointmentId != null)
-                .Select(slot => slot.AppointmentId!.Value)
-                .Distinct()
-                .ToList();
+            slot.Appointment.Status = AppointmentStatus.Archived;
+            slot.Appointment.UpdatedAt = DateTime.UtcNow;
+            slot.AppointmentId = null;
+            slot.Appointment = null;
+        }
 
-            // 2. Один запрос в БД для получения всех нужных Appointment
-            var appointments = (await _appointmentRepository.FindAsync(appointment => appointmentIds.Contains(appointment.Id)))
-                .ToDictionary(appointment => appointment.Id);
+        _unitOfWork.Remove(slot);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
 
-            List<Schedule> slots = new List<Schedule>();
-
-            foreach (var request in addedSlots)
+    public async Task<int> RemoveSlotsAsync(List<Guid> selectedSlots, CancellationToken cancellationToken = default)
+    {
+        var slots = new List<Schedule>();
+        foreach (var selectedSlot in selectedSlots)
+        {
+            var slot = await _scheduleRepository.GetByIdWithAppointmentAsync(selectedSlot, cancellationToken);
+            if (slot is not null)
             {
-                var slot = new Schedule
-                {
-                    SlotTime = request.slotTime,
-                    CreatedAt = DateTime.UtcNow,
-                    OrganizationId = _organizationContext.GetCurrentOrganizationId()!.Value
-                };
-                
-                if (request.AppointmentId != null)
-                {
-                    if (appointments.TryGetValue(request.AppointmentId.Value, out var appointment))
-                    {
-                        slot.AppointmentId = request.AppointmentId.Value;
-                    }
-                }
-                // иначе Appointment остаётся null, а AppointmentId – null
-
                 slots.Add(slot);
             }
-
-            await _scheduleRepository.AddRangeAsync(slots);
-            return slots;
         }
 
-        public async Task<List<Schedule>> GetScheduleByPeriodAsync(DateTime dateFrom, DateTime dateTo)
+        if (slots.Count == 0)
         {
-            return (await _scheduleRepository.GetByPeriodAsync(dateFrom, dateTo)).ToList();
-
+            return 0;
         }
 
-        public async Task<Schedule> GetSlotByIdAsync(Guid SlotId)
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        foreach (var slot in slots)
         {
-            return await _scheduleRepository.GetByIdWithAppointmentAsync(SlotId)
-                ?? throw new NotFoundException($"Schedule with ID {SlotId} was not found.");
-        }
-
-        public async Task<bool> RemoveSlotAsync(Guid selectedSlot)
-        {
-            var slot = await _scheduleRepository.GetByIdAsync(selectedSlot)
-                ?? throw new NotFoundException($"Schedule with ID {selectedSlot} was not found.");
-
-            await _scheduleRepository.DeleteAsync(slot);
-            return true;
-        }
-
-        public async Task<int> RemoveSlotsAsync(List<Guid> selectedSlots)
-        {
-            var slots = await _scheduleRepository.FindAsync(slot => selectedSlots.Contains(slot.Id));
-            foreach (var slot in slots)
+            if (slot.Appointment is not null)
             {
-                await _scheduleRepository.DeleteAsync(slot);
+                slot.Appointment.Status = AppointmentStatus.Archived;
+                slot.Appointment.UpdatedAt = DateTime.UtcNow;
+                slot.AppointmentId = null;
+                slot.Appointment = null;
             }
 
-            return slots.Count;
+            _unitOfWork.Remove(slot);
         }
 
-        public async Task UpdateSlotAsync(Guid id, DateTime? slotTime, Guid? AppointmentId)
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return slots.Count;
+    }
+
+    public async Task UpdateSlotAsync(Guid id, UpdateSlotRequest request, CancellationToken cancellationToken = default)
+    {
+        var slot = await GetSlotByIdAsync(id, cancellationToken);
+        var organizationId = GetOrganizationId();
+        var startTime = request.StartTime ?? slot.StartTime;
+        var endTime = request.EndTime ?? slot.EndTime;
+
+        if (request.StartTime.HasValue || request.EndTime.HasValue)
         {
-            var slot = await _scheduleRepository.GetByIdWithAppointmentAsync(id)
-                ?? throw new NotFoundException($"Schedule with ID {id} was not found.");
-
-            if(slotTime.HasValue)
+            if (slot.Appointment is null)
             {
-                // ! т.к. в глобальном middleware есть обработчик NotFound
-                slot!.SlotTime = slotTime.Value;
-                if (slot.Appointment is not null)
+                if (await _scheduleRepository.HasOverlapAsync(
+                    startTime, endTime, organizationId, slot.SalonId, slot.Id))
                 {
-                    var newEndTime = slotTime.Value.AddMinutes((double)slot.Appointment.TotalDuration);
-                    if (await _appointmentRepository.HasOverlapAsync(
-                        slotTime.Value,
-                        newEndTime,
-                        slot.Appointment.OrganizationId,
-                        slot.Appointment.SalonId,
-                        slot.Appointment.Id))
-                    {
-                        throw new ConflictException("Это время уже занято другой записью.");
-                    }
-
-                    slot.Appointment.StartTime = slotTime.Value;
-                    slot.Appointment.EndTime = newEndTime;
+                    throw new ConflictException("Указанный интервал уже занят другим слотом.");
                 }
             }
-
-            if(AppointmentId.HasValue)
+            else if (await _scheduleRepository.HasOverlapWithOccupiedSlotsAsync(
+                startTime, endTime, organizationId, slot.SalonId, slot.Id, slot.Appointment.Id))
             {
-                var appointment = await _appointmentRepository.GetByIdWithDetailsAsync(AppointmentId.Value)
-                    ?? throw new NotFoundException($"Appointment with ID {AppointmentId.Value} was not found.");
-                slot!.AppointmentId = appointment.Id;
-                slot.Appointment = appointment;
-                if (slotTime.HasValue)
-                {
-                    var newEndTime = slotTime.Value.AddMinutes((double)appointment.TotalDuration);
-                    if (await _appointmentRepository.HasOverlapAsync(
-                        slotTime.Value,
-                        newEndTime,
-                        appointment.OrganizationId,
-                        appointment.SalonId,
-                        appointment.Id))
-                    {
-                        throw new ConflictException("Это время уже занято другой записью.");
-                    }
-
-                    appointment.StartTime = slotTime.Value;
-                    appointment.EndTime = newEndTime;
-                }
+                throw new ConflictException("Указанный интервал уже занят другой записью.");
             }
-
-            slot!.UpdatedAt = DateTime.UtcNow;
-
-            await _scheduleRepository.UpdateAsync(slot);
         }
+
+        if (request.AppointmentData is not null && slot.Appointment is null)
+        {
+            throw new ValidationException("Нельзя обновить запись у свободного слота.");
+        }
+
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        if (request.StartTime.HasValue || request.EndTime.HasValue)
+        {
+            slot.StartTime = startTime;
+            slot.EndTime = endTime;
+            slot.UpdatedAt = DateTime.UtcNow;
+            if (slot.Appointment is not null)
+            {
+                slot.Appointment.StartTime = startTime;
+                slot.Appointment.EndTime = endTime;
+                await _scheduleRepository.DeleteFreeSlotsByTimeAsync(
+                    startTime, endTime, organizationId, slot.SalonId, slot.Id);
+            }
+        }
+
+        if (request.AppointmentData is not null)
+        {
+            var appointmentData = request.AppointmentData;
+            await _appointmentService.UpdateAsync(
+                slot.Appointment!.Id,
+                new UpdateAppointmentRequest(
+                    appointmentData.ClientId,
+                    appointmentData.Services,
+                    null,
+                    null,
+                    appointmentData.Status,
+                    appointmentData.Notes,
+                    appointmentData.SalonId),
+                cancellationToken);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private Guid GetOrganizationId()
+    {
+        return _organizationContext.GetCurrentOrganizationId()
+            ?? throw new ValidationException("Не удалось определить текущую организацию.");
     }
 }
-
