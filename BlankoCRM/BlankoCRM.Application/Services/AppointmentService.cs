@@ -1,9 +1,9 @@
-using BlankoCRM.Application.Abstract;
+﻿using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Core.Entities;
+using BlankoCRM.Core.Interfaces;
+using BlankoCRM.Core.Exceptions;
 using BlankoCRM.Infrastructure;
-using BlankoCRM.Infrastructure.Data;
-using BlankoCRM.Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using System.Linq;
@@ -11,69 +11,73 @@ using System.Linq;
 namespace BlankoCRM.Application.Services;
 
 /// <summary>
-/// Реализация сервиса для работы с записями на приём.
+/// Р РµР°Р»РёР·Р°С†РёСЏ СЃРµСЂРІРёСЃР° РґР»СЏ СЂР°Р±РѕС‚С‹ СЃ Р·Р°РїРёСЃСЏРјРё РЅР° РїСЂРёС‘Рј.
 /// </summary>
 public class AppointmentService : IAppointmentService
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IAppointmentRepository _appointmentRepository;
+    private readonly IRepository<Client> _clientRepository;
+    private readonly IRepository<Service> _serviceRepository;
+    private readonly IRepository<Salon> _salonRepository;
+    private readonly IOrganizationContext _organizationContext;
 
-    public AppointmentService(AppDbContext dbContext)
+    public AppointmentService(
+        IAppointmentRepository appointmentRepository,
+        IRepository<Client> clientRepository,
+        IRepository<Service> serviceRepository,
+        IRepository<Salon> salonRepository,
+        IOrganizationContext organizationContext)
     {
-        _dbContext = dbContext;
+        _appointmentRepository = appointmentRepository;
+        _clientRepository = clientRepository;
+        _serviceRepository = serviceRepository;
+        _salonRepository = salonRepository;
+        _organizationContext = organizationContext;
     }
 
     public async Task<Appointment?> GetByIdAsync(Guid id)
     {
-        return await _dbContext.Appointments
-            .Include(a => a.Client)
-            .Include(a => a.AppointmentServices)
-            .FirstOrDefaultAsync(a => a.Id == id);
+        return await _appointmentRepository.GetByIdWithDetailsAsync(id);
     }
 
     public async Task<List<Appointment>> GetForDayAsync(DateTime date)
     {
-        var dayStart = date.Date;
-        var dayEnd = dayStart.AddDays(1);
-
-        return await _dbContext.Appointments
-            .Include(a => a.Client)
-            .Include(a => a.AppointmentServices)
-            .Where(a => a.StartTime >= dayStart && a.StartTime < dayEnd)
-            .OrderBy(a => a.StartTime)
-            .ToListAsync();
+        return (await _appointmentRepository.GetForDayAsync(date)).ToList();
     }
 
     public async Task<List<Appointment>> GetAllAppointmentsAsync()
     {
-        var appointments = await _dbContext.Appointments
-                    .Include(a => a.Client)
-                    .Include(a => a.AppointmentServices)
-                    .OrderBy(a => a.StartTime).ToListAsync();
-        if (appointments.Count == 0) throw new KeyNotFoundException("У мастера отсутствуют записи");
-        return appointments;
+        var appointments = await _appointmentRepository.GetAllWithDetailsAsync();
+        return appointments.ToList();
     }
 
     public async Task<Appointment> CreateAsync(
         Guid clientId,
         List<ServiceInput> serviceInputs,
         DateTime startTime,
-        string? notes = null)
+        string? notes = null,
+        Guid? salonId = null)
     {
-        // 1. Проверяем клиента
-        var client = await _dbContext.Clients.FindOrThrowAsync(clientId);
+        // 1. РџСЂРѕРІРµСЂСЏРµРј РєР»РёРµРЅС‚Р°
+        var client = await _clientRepository.GetByIdAsync(clientId)
+            ?? throw new NotFoundException($"Client with ID {clientId} was not found.");
 
-        // 2. Загружаем все услуги из БД одним запросом
+        if (salonId.HasValue && await _salonRepository.GetByIdAsync(salonId.Value) is null)
+        {
+            throw new NotFoundException($"Salon with ID {salonId.Value} was not found in the current organization.");
+        }
+
+        // 2. Р—Р°РіСЂСѓР¶Р°РµРј РІСЃРµ СѓСЃР»СѓРіРё РёР· Р‘Р” РѕРґРЅРёРј Р·Р°РїСЂРѕСЃРѕРј
         var serviceIds = serviceInputs.Select(si => si.ServiceId).Distinct().ToList();
-        var services = await _dbContext.Services
-            .Where(s => serviceIds.Contains(s.Id))
-            .ToDictionaryAsync(s => s.Id);
+        var services = (await _serviceRepository.FindAsync(service => serviceIds.Contains(service.Id)))
+            .ToDictionary(service => service.Id);
 
-        // 3. Проверяем, что все услуги найдены
+        // 3. РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РІСЃРµ СѓСЃР»СѓРіРё РЅР°Р№РґРµРЅС‹
         var missing = serviceIds.Except(services.Keys).ToList();
         if (missing.Any())
-            throw new KeyNotFoundException($"Услуги с ID {string.Join(", ", missing)} не найдены");
+            throw new NotFoundException($"Services with IDs {string.Join(", ", missing)} were not found.");
 
-        // 4. Создаём список AppointmentService
+        // 4. РЎРѕР·РґР°С‘Рј СЃРїРёСЃРѕРє AppointmentService
         var appointmentServices = new List<Core.Entities.AppointmentService>();
 
         foreach (var input in serviceInputs)
@@ -86,7 +90,7 @@ public class AppointmentService : IAppointmentService
             {
                 Id = Guid.NewGuid(),
                 ServiceId = service.Id,
-                TenantId = TenantContext.CurrentTenantId!.Value,
+                OrganizationId = _organizationContext.GetCurrentOrganizationId()!.Value,
                 Price = price,
                 DurationMinutes = duration,
                 ServiceName = service.Name,
@@ -94,16 +98,24 @@ public class AppointmentService : IAppointmentService
             });
         }
 
-        // 5. Рассчитываем общую длительность (сумма всех длительностей)
+        // 5. Р Р°СЃСЃС‡РёС‚С‹РІР°РµРј РѕР±С‰СѓСЋ РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ (СЃСѓРјРјР° РІСЃРµС… РґР»РёС‚РµР»СЊРЅРѕСЃС‚РµР№)
         var totalDuration = appointmentServices.Sum(s => s.DurationMinutes * s.Quantity);
         var end = startTime.AddMinutes(totalDuration);
+        var organizationId = _organizationContext.GetCurrentOrganizationId()!.Value;
 
-        // 6. Создаём Appointment
+        if (await _appointmentRepository.HasOverlapAsync(startTime, end, organizationId, salonId))
+        {
+            throw new ConflictException($"Время записи {startTime:g} - {end:g} уже занято.");
+        }
+
+        // 6. РЎРѕР·РґР°С‘Рј Appointment
         var appointment = new Appointment
         {
             Id = Guid.NewGuid(),
-            TenantId = TenantContext.CurrentTenantId!.Value,
+            OrganizationId = organizationId,
+            SalonId = salonId,
             ClientId = client.Id,
+            Client = client,
             StartTime = startTime,
             EndTime = end,
             Status = AppointmentStatus.Scheduled,
@@ -113,26 +125,33 @@ public class AppointmentService : IAppointmentService
             AppointmentServices = appointmentServices
         };
 
-        // 7. Сохраняем (достаточно добавить только корневую сущность)
-        _dbContext.Appointments.Add(appointment);
-        await _dbContext.SaveChangesAsync();
+        // 7. РЎРѕС…СЂР°РЅСЏРµРј (РґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РґРѕР±Р°РІРёС‚СЊ С‚РѕР»СЊРєРѕ РєРѕСЂРЅРµРІСѓСЋ СЃСѓС‰РЅРѕСЃС‚СЊ)
+        await _appointmentRepository.AddAsync(appointment);
 
-        // 8. Возвращаем полный объект с загруженными связями
-        return (await GetByIdAsync(appointment.Id))!;
+        return appointment;
     }
 
     public async Task UpdateAsync(Guid id, DateTime? startTime, AppointmentStatus? status, string? notes)
     {
-        var appointment = await _dbContext.Appointments
-            .Include(a => a.AppointmentServices)
-            .FirstOrDefaultAsync(a => a.Id == id)
-            ?? throw new KeyNotFoundException($"Запись с ID {id} не найдена");
+        var appointment = await _appointmentRepository.GetByIdWithDetailsAsync(id)
+            ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
 
         if (startTime.HasValue)
         {
-            var duration = appointment.AppointmentServices.Sum(s => s.DurationMinutes);
+            var duration = appointment.AppointmentServices.Sum(s => s.DurationMinutes * s.Quantity);
+            var endTime = startTime.Value.AddMinutes(duration);
+            if (await _appointmentRepository.HasOverlapAsync(
+                startTime.Value,
+                endTime,
+                appointment.OrganizationId,
+                appointment.SalonId,
+                appointment.Id))
+            {
+                throw new ConflictException($"Время записи {startTime.Value:g} - {endTime:g} уже занято.");
+            }
+
             appointment.StartTime = startTime.Value;
-            appointment.EndTime = appointment.StartTime.AddMinutes(duration);
+            appointment.EndTime = endTime;
         }
 
         if (status.HasValue)
@@ -147,24 +166,26 @@ public class AppointmentService : IAppointmentService
 
         appointment.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync();
+        await _appointmentRepository.UpdateAsync(appointment);
     }
 
     public async Task DeleteAsync(Guid id)
     {
-        var appointment = await _dbContext.Appointments.FindOrThrowAsync(id);
+        var appointment = await _appointmentRepository.GetByIdAsync(id)
+            ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
 
-        _dbContext.Appointments.Remove(appointment);
-        await _dbContext.SaveChangesAsync();
+        await _appointmentRepository.DeleteAsync(appointment);
     }
 
     public async Task CancelAsync(Guid id)
     {
-        var appointment = await _dbContext.Appointments.FindOrThrowAsync(id);
+        var appointment = await _appointmentRepository.GetByIdAsync(id)
+            ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
 
         appointment.Status = AppointmentStatus.Cancelled;
         appointment.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync();
+        await _appointmentRepository.UpdateAsync(appointment);
     }
 }
+

@@ -20,7 +20,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
                     AppointmentId = table.Column<Guid>(type: "uuid", nullable: true),
                     SlotTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -35,9 +35,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                         principalTable: "Appointments",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Schedules_Tenants_TenantId",
-                        column: x => x.TenantId,
-                        principalTable: "Tenants",
+                        name: "FK_Schedules_Organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "Organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -48,9 +48,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                 column: "AppointmentId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Schedules_TenantId",
+                name: "IX_Schedules_OrganizationId",
                 table: "Schedules",
-                column: "TenantId");
+                column: "OrganizationId");
         }
 
         /// <inheritdoc />
@@ -68,3 +68,4 @@ namespace BlankoCRM.Infrastructure.Migrations
         }
     }
 }
+

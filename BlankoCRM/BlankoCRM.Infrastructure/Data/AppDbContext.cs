@@ -2,70 +2,67 @@
 using BlankoCRM.Core.Interfaces;
 using BlankoCRM.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using System.Linq.Expressions;
 
 namespace BlankoCRM.Infrastructure.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
 
-    public DbSet<Tenant> Tenants { get; set; }
+    public DbSet<Organization> Organizations { get; set; }
     public DbSet<Client> Clients { get; set; }
     public DbSet<Service> Services { get; set; }
     public DbSet<Appointment> Appointments { get; set; }
     public DbSet<AppointmentService> AppointmentServices { get; set; }
     public DbSet<Schedule> Schedules { get; set; }
+    public DbSet<Salon> Salons { get; set; }
+    public DbSet<MasterProfile> MasterProfiles { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Глобальный фильтр для всех сущностей с TenantId.
-        // Фильтр применяется ТОЛЬКО если TenantContext.CurrentTenantId не null.
+        // Глобальный фильтр для всех сущностей с OrganizationId.
+        // Фильтр применяется ТОЛЬКО если OrganizationContext.CurrentOrganizationId не null.
         // Это защищает неавторизованные запросы (регистрация, логин) от некорректной фильтрации.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()
-            .Where(e => typeof(IMultiTenant).IsAssignableFrom(e.ClrType)))
+            .Where(e => typeof(IOrganizationEntity).IsAssignableFrom(e.ClrType)))
         {
             var parameter = Expression.Parameter(entityType.ClrType, "e");
-            var tenantIdProperty = Expression.Property(parameter, nameof(IMultiTenant.TenantId));
+            var organizationIdProperty = Expression.Property(parameter, nameof(IOrganizationEntity.OrganizationId));
 
             // СТАТИЧЕСКОЕ СВОЙСТВО — без захвата экземпляра
-            var currentTenantId = Expression.Property(null, typeof(TenantContext), nameof(TenantContext.CurrentTenantId));
+            var currentOrganizationId = Expression.Property(null, typeof(OrganizationContext), nameof(OrganizationContext.CurrentOrganizationId));
 
-            var hasValue = Expression.Property(currentTenantId, "HasValue");
-            var value = Expression.Property(currentTenantId, "Value");
-            var comparison = Expression.Equal(tenantIdProperty, value);
+            var hasValue = Expression.Property(currentOrganizationId, "HasValue");
+            var value = Expression.Property(currentOrganizationId, "Value");
+            var comparison = Expression.Equal(organizationIdProperty, value);
             var andAlso = Expression.AndAlso(hasValue, comparison);
 
             var lambda = Expression.Lambda(andAlso, parameter);
-            //modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
-            modelBuilder.Entity<Client>().HasQueryFilter(e => e.TenantId == TenantContext.CurrentTenantId);
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
         }
 
         // Настройка таблиц, связей, индексов
-        ConfigureTenant(modelBuilder);
+        ConfigureOrganization(modelBuilder);
         ConfigureClient(modelBuilder);
         ConfigureService(modelBuilder);
         ConfigureAppointment(modelBuilder);
         ConfigureAppointmentService(modelBuilder);
+        ConfigureIdentityEntities(modelBuilder);
     }
 
-    private void ConfigureTenant(ModelBuilder modelBuilder)
+    private void ConfigureOrganization(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Tenant>(entity =>
+        modelBuilder.Entity<Organization>(entity =>
         {
             entity.HasKey(t => t.Id);
-            entity.HasIndex(t => t.Email).IsUnique(); // Email уникален
             entity.Property(t => t.Name).IsRequired().HasMaxLength(100);
-            entity.Property(t => t.Email).IsRequired().HasMaxLength(100);
-            entity.Property(t => t.PasswordHash).IsRequired();
-
-            // Индексы для часто используемых полей
-            entity.HasIndex(t => t.TelegramChatId);
         });
     }
 
@@ -79,17 +76,17 @@ public class AppDbContext : DbContext
             entity.Property(c => c.Telegram).HasMaxLength(100);
 
             // Индексы для быстрого поиска
-            entity.HasIndex(c => c.TenantId);
+            entity.HasIndex(c => c.OrganizationId);
             entity.HasIndex(c => c.Phone);
             entity.HasIndex(c => c.Telegram);
 
             // Составной уникальный индекс: телефон должен быть уникален в пределах одного мастера
-            entity.HasIndex(c => new { c.TenantId, c.Phone }).IsUnique();
+            entity.HasIndex(c => new { c.OrganizationId, c.Phone }).IsUnique();
 
-            // Связь с Tenant
-            entity.HasOne(c => c.Tenant)
+            // Связь с Organization
+            entity.HasOne(c => c.Organization)
                 .WithMany(t => t.Clients)
-                .HasForeignKey(c => c.TenantId)
+                .HasForeignKey(c => c.OrganizationId)
                 .OnDelete(DeleteBehavior.Cascade); // При удалении мастера удаляются его клиенты
         });
     }
@@ -102,14 +99,14 @@ public class AppDbContext : DbContext
             entity.Property(s => s.Name).IsRequired().HasMaxLength(100);
             entity.Property(s => s.Price).HasColumnType("decimal(18,2)");
 
-            entity.HasIndex(s => s.TenantId);
+            entity.HasIndex(s => s.OrganizationId);
 
             // Название услуги должно быть уникально в пределах одного мастера
-            entity.HasIndex(s => new { s.TenantId, s.Name }).IsUnique();
+            entity.HasIndex(s => new { s.OrganizationId, s.Name }).IsUnique();
 
-            entity.HasOne(s => s.Tenant)
+            entity.HasOne(s => s.Organization)
                 .WithMany(t => t.Services)
-                .HasForeignKey(s => s.TenantId)
+                .HasForeignKey(s => s.OrganizationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
@@ -125,14 +122,14 @@ public class AppDbContext : DbContext
                 .HasConversion<int>(); // enum сохраняется как int
 
             // Индексы для частых запросов
-            entity.HasIndex(a => a.TenantId);
+            entity.HasIndex(a => a.OrganizationId);
             entity.HasIndex(a => a.StartTime);
-            entity.HasIndex(a => new { a.TenantId, a.StartTime }); // для календаря
+            entity.HasIndex(a => new { a.OrganizationId, a.StartTime }); // для календаря
 
-            // Связь с Tenant
-            entity.HasOne(a => a.Tenant)
+            // Связь с Organization
+            entity.HasOne(a => a.Organization)
                 .WithMany(t => t.Appointments)
-                .HasForeignKey(a => a.TenantId)
+                .HasForeignKey(a => a.OrganizationId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Связь с Client
@@ -164,7 +161,7 @@ public class AppDbContext : DbContext
             entity.Property(aps => aps.Quantity).HasDefaultValue(1);
 
             // Индексы
-            entity.HasIndex(aps => aps.TenantId); // обязательно для мультитенантности
+            entity.HasIndex(aps => aps.OrganizationId); // обязательно для мультитенантности
             entity.HasIndex(aps => aps.AppointmentId);
             entity.HasIndex(aps => aps.ServiceId);
 
@@ -180,10 +177,10 @@ public class AppDbContext : DbContext
                 .HasForeignKey(aps => aps.ServiceId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Связь с Tenant
-            entity.HasOne(aps => aps.Tenant)
-                .WithMany() // если в Tenant не нужно собирать все AppointmentServices
-                .HasForeignKey(aps => aps.TenantId)
+            // Связь с Organization
+            entity.HasOne(aps => aps.Organization)
+                .WithMany() // если в Organization не нужно собирать все AppointmentServices
+                .HasForeignKey(aps => aps.OrganizationId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }
@@ -196,4 +193,48 @@ public class AppDbContext : DbContext
             }
         );
     }
+
+    private static void ConfigureIdentityEntities(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.Property(user => user.Name).IsRequired().HasMaxLength(100);
+            entity.HasOne(user => user.Organization)
+                .WithMany(organization => organization.Users)
+                .HasForeignKey(user => user.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(user => user.Salon)
+                .WithMany()
+                .HasForeignKey(user => user.SalonId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<MasterProfile>(entity =>
+        {
+            entity.HasKey(profile => profile.Id);
+            entity.HasOne(profile => profile.User)
+                .WithOne(user => user.MasterProfile)
+                .HasForeignKey<MasterProfile>(profile => profile.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(profile => profile.Organization)
+                .WithMany(organization => organization.MasterProfiles)
+                .HasForeignKey(profile => profile.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(profile => profile.Salon)
+                .WithMany(salon => salon.MasterProfiles)
+                .HasForeignKey(profile => profile.SalonId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Salon>(entity =>
+        {
+            entity.HasKey(salon => salon.Id);
+            entity.Property(salon => salon.Name).IsRequired().HasMaxLength(150);
+            entity.HasOne(salon => salon.Organization)
+                .WithMany(organization => organization.Salons)
+                .HasForeignKey(salon => salon.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
 }
+

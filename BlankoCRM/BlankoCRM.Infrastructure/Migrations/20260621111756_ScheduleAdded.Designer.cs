@@ -53,7 +53,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("TenantId")
+                    b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -65,9 +65,9 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasIndex("StartTime");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("OrganizationId");
 
-                    b.HasIndex("TenantId", "StartTime");
+                    b.HasIndex("OrganizationId", "StartTime");
 
                     b.ToTable("Appointments", t =>
                         {
@@ -102,7 +102,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<Guid>("TenantId")
+                    b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
@@ -111,7 +111,7 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasIndex("ServiceId");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("OrganizationId");
 
                     b.ToTable("AppointmentServices");
                 });
@@ -145,7 +145,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<Guid>("TenantId")
+                    b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -157,9 +157,9 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasIndex("Telegram");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("OrganizationId");
 
-                    b.HasIndex("TenantId", "Phone")
+                    b.HasIndex("OrganizationId", "Phone")
                         .IsUnique();
 
                     b.ToTable("Clients");
@@ -180,7 +180,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Property<DateTime>("SlotTime")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("TenantId")
+                    b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -190,7 +190,7 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasIndex("AppointmentId");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("OrganizationId");
 
                     b.ToTable("Schedules");
                 });
@@ -218,7 +218,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<Guid>("TenantId")
+                    b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -226,15 +226,15 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("OrganizationId");
 
-                    b.HasIndex("TenantId", "Name")
+                    b.HasIndex("OrganizationId", "Name")
                         .IsUnique();
 
                     b.ToTable("Services");
                 });
 
-            modelBuilder.Entity("BlankoCRM.Core.Entities.Tenant", b =>
+            modelBuilder.Entity("BlankoCRM.Core.Entities.Organization", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -270,7 +270,7 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasIndex("TelegramChatId");
 
-                    b.ToTable("Tenants");
+                    b.ToTable("Organizations");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Appointment", b =>
@@ -281,15 +281,15 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("BlankoCRM.Core.Entities.Tenant", "Tenant")
+                    b.HasOne("BlankoCRM.Core.Entities.Organization", "Organization")
                         .WithMany("Appointments")
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Client");
 
-                    b.Navigation("Tenant");
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.AppointmentService", b =>
@@ -306,9 +306,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("BlankoCRM.Core.Entities.Tenant", "Tenant")
+                    b.HasOne("BlankoCRM.Core.Entities.Organization", "Organization")
                         .WithMany()
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -316,18 +316,18 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.Navigation("Service");
 
-                    b.Navigation("Tenant");
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Client", b =>
                 {
-                    b.HasOne("BlankoCRM.Core.Entities.Tenant", "Tenant")
+                    b.HasOne("BlankoCRM.Core.Entities.Organization", "Organization")
                         .WithMany("Clients")
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Tenant");
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Schedule", b =>
@@ -336,26 +336,26 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("AppointmentId");
 
-                    b.HasOne("BlankoCRM.Core.Entities.Tenant", "Tenant")
+                    b.HasOne("BlankoCRM.Core.Entities.Organization", "Organization")
                         .WithMany()
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Appointment");
 
-                    b.Navigation("Tenant");
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Service", b =>
                 {
-                    b.HasOne("BlankoCRM.Core.Entities.Tenant", "Tenant")
+                    b.HasOne("BlankoCRM.Core.Entities.Organization", "Organization")
                         .WithMany("Services")
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Tenant");
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Appointment", b =>
@@ -373,7 +373,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Navigation("AppointmentServices");
                 });
 
-            modelBuilder.Entity("BlankoCRM.Core.Entities.Tenant", b =>
+            modelBuilder.Entity("BlankoCRM.Core.Entities.Organization", b =>
                 {
                     b.Navigation("Appointments");
 
@@ -385,3 +385,4 @@ namespace BlankoCRM.Infrastructure.Migrations
         }
     }
 }
+

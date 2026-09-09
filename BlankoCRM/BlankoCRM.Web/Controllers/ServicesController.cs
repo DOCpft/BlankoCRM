@@ -1,6 +1,7 @@
-using BlankoCRM.Application.Abstract;
+﻿using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Application.DTOs.Mapping;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,18 +13,19 @@ namespace BlankoCRM.Web.Controllers;
 public class ServicesController : ControllerBase
 {
     private readonly IServicesService _servicesService;
+    private readonly IMapper _mapper;
 
-    public ServicesController(IServicesService servicesService)
+    public ServicesController(IServicesService servicesService, IMapper mapper)
     {
         _servicesService = servicesService;
+        _mapper = mapper;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<ServiceDto>>> GetAll()
     {
         var services = await _servicesService.GetAllAsync();
-        if (services.Count == 0) return NotFound();
-        var dtos = services.Select(s => s.ToDto());
+        var dtos = _mapper.Map<List<ServiceDto>>(services);
         return Ok(dtos);
     }
 
@@ -32,7 +34,7 @@ public class ServicesController : ControllerBase
     {
         var service = await _servicesService.GetByIdAsync(id);
 
-        return Ok(service!.ToDto());
+        return Ok(_mapper.Map<ServiceDto>(service));
     }
 
     [HttpPost]
@@ -43,9 +45,10 @@ public class ServicesController : ControllerBase
             request.Name,
             request.DurationMinutes,
             request.Price,
-            request.Description);
+            request.Description,
+            request.SalonId);
 
-        return CreatedAtAction(nameof(GetById), new { id = service.Id }, service.ToDto());
+        return CreatedAtAction(nameof(GetById), new { id = service.Id }, _mapper.Map<ServiceDto>(service));
     }
 
     [HttpPut("{id:guid}")]
@@ -57,7 +60,8 @@ public class ServicesController : ControllerBase
             request.Name,
             request.DurationMinutes,
             request.Price,
-            request.Description);
+            request.Description,
+            request.SalonId);
 
         return NoContent();
     }
@@ -65,14 +69,8 @@ public class ServicesController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        try
-        {
-            await _servicesService.DeleteAsync(id);
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ex.Message);
-        }
+        await _servicesService.DeleteAsync(id);
+        return NoContent();
     }
 }
+

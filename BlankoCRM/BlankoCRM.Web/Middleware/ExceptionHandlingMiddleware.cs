@@ -1,13 +1,15 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using BlankoCRM.Core.Exceptions;
 using System.Net;
 using System.Text.Json;
+using Npgsql;
 
 namespace BlankoCRM.Web.Middleware;
 
 /// <summary>
-/// Глобальный middleware для обработки необработанных исключений.
-/// Возвращает человекочитаемый JSON-ответ вместо 500 с стектрейсом.
-/// Помещаем сюда либо частовознгикающие исключения, чтобы сами перехватывались, либо "хз что"
+/// Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ middleware РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё РЅРµРѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹С… РёСЃРєР»СЋС‡РµРЅРёР№.
+/// Р’РѕР·РІСЂР°С‰Р°РµС‚ С‡РµР»РѕРІРµРєРѕС‡РёС‚Р°РµРјС‹Р№ JSON-РѕС‚РІРµС‚ РІРјРµСЃС‚Рѕ 500 СЃ СЃС‚РµРєС‚СЂРµР№СЃРѕРј.
+/// РџРѕРјРµС‰Р°РµРј СЃСЋРґР° Р»РёР±Рѕ С‡Р°СЃС‚РѕРІРѕР·РЅРіРёРєР°СЋС‰РёРµ РёСЃРєР»СЋС‡РµРЅРёСЏ, С‡С‚РѕР±С‹ СЃР°РјРё РїРµСЂРµС…РІР°С‚С‹РІР°Р»РёСЃСЊ, Р»РёР±Рѕ "С…Р· С‡С‚Рѕ"
 /// </summary>
 public class ExceptionHandlingMiddleware
 {
@@ -26,42 +28,45 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
+        catch (DomainException ex)
+        {
+            _logger.LogWarning(ex, "Domain error occurred");
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = ex.StatusCode;
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = ex.Message }));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            context.Response.ContentType = "application/json";
+            context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = ex.Message }));
+        }
         catch (DbUpdateException ex)
         {
-            // Ошибки базы данных (нарушение уникальности, внешние ключи и т.д.)
+            // РћС€РёР±РєРё Р±Р°Р·С‹ РґР°РЅРЅС‹С… (РЅР°СЂСѓС€РµРЅРёРµ СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚Рё, РІРЅРµС€РЅРёРµ РєР»СЋС‡Рё Рё С‚.Рґ.)
             _logger.LogError(ex, "Database error occurred");
+            _logger.LogError(
+                "Database error details. InnerException: {InnerException}",
+                ex.InnerException?.ToString() ?? "<none>");
 
             context.Response.ContentType = "application/json";
-            context.Response.StatusCode = (int)HttpStatusCode.Conflict;
-
-            var message = ex.InnerException?.Message ?? ex.Message;
-
-            // Пользователю отдаём общее сообщение, чтобы не светить детали БД
-            var response = new
+            var postgresException = ex.InnerException as PostgresException;
+            var (statusCode, message) = postgresException?.SqlState switch
             {
-                error = "Произошла ошибка при сохранении данных. Проверьте, что данные уникальны и корректны.",
-                detail = message
+                PostgresErrorCodes.UniqueViolation => ((int)HttpStatusCode.Conflict, "A record with the same unique value already exists."),
+                PostgresErrorCodes.ForeignKeyViolation => ((int)HttpStatusCode.BadRequest, "The request references a missing related record."),
+                PostgresErrorCodes.CheckViolation => ((int)HttpStatusCode.BadRequest, "The data violates a database constraint."),
+                _ => ((int)HttpStatusCode.InternalServerError, "The database operation failed.")
             };
 
-            await context.Response.WriteAsync(JsonSerializer.Serialize(response));
-        }
-        catch (KeyNotFoundException ex) 
-        {
-            _logger.LogError($"KeyNotFound exception: {ex.Message}");
-
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode= (int)HttpStatusCode.NotFound;
-
-            var response = new
-            {
-                error = "Запись с таким ID не найдена в БД. Убедитесь в правильности ID."
-            };
+            context.Response.StatusCode = statusCode;
+            var response = new { error = message };
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(response));
         }
         catch (Exception ex)
         {
-            // Все остальные необработанные исключения
+            // Р’СЃРµ РѕСЃС‚Р°Р»СЊРЅС‹Рµ РЅРµРѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹Рµ РёСЃРєР»СЋС‡РµРЅРёСЏ
             _logger.LogError(ex, "Unhandled exception occurred");
             
             context.Response.ContentType = "application/json";
@@ -69,10 +74,11 @@ public class ExceptionHandlingMiddleware
 
             var response = new
             {
-                error = "Внутренняя ошибка сервера. Пожалуйста, попробуйте позже."
+                error = "Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ РѕС€РёР±РєР° СЃРµСЂРІРµСЂР°. РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РїРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ."
             };
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(response));
         }
     }
 }
+

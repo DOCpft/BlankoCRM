@@ -1,6 +1,7 @@
 ﻿using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Application.DTOs.Mapping;
+using AutoMapper;
 using BlankoCRM.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -14,10 +15,12 @@ namespace BlankoCRM.Web.Controllers
     public class ScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;
+        private readonly IMapper _mapper;
 
-        public ScheduleController(IScheduleService scheduleService)
+        public ScheduleController(IScheduleService scheduleService, IMapper mapper)
         {
             _scheduleService = scheduleService;
+            _mapper = mapper;
         }
 
         [HttpGet("{id:guid}", Name = "GetSlotById")]
@@ -25,7 +28,7 @@ namespace BlankoCRM.Web.Controllers
         {
             var slot = await _scheduleService.GetSlotByIdAsync(id);
 
-            return Ok(slot.ToDto());
+            return Ok(_mapper.Map<ScheduleDto>(slot));
         }
 
 
@@ -39,9 +42,7 @@ namespace BlankoCRM.Web.Controllers
 
             var schedule = await _scheduleService.GetScheduleByPeriodAsync(dtFrom, dtTo);
 
-            if (schedule.Count == 0) return NotFound();
-
-            var dtos = schedule.Select(x => x.ToDto()).ToList();
+            var dtos = _mapper.Map<List<ScheduleDto>>(schedule);
 
             return Ok(dtos);
         }
@@ -55,20 +56,16 @@ namespace BlankoCRM.Web.Controllers
             {
                 return BadRequest();
             }
-            return CreatedAtAction("GetSlotById", new { id = slot.Id }, slot.ToDto());
+            return CreatedAtAction("GetSlotById", new { id = slot.Id }, _mapper.Map<ScheduleDto>(slot));
             
         }
 
         [HttpPost("add/bulk")]
         public async Task<ActionResult<List<ScheduleDto>>> AddSlotsAsync([FromBody] List<CreateSlotRequest> requests)
         {
-            var slots = await _scheduleService.AddSlotsAsync(
-                requests.Select(r => Tuple.Create(r.slotTime, r.AppointmentId)).ToList()
-            );
+            var slots = await _scheduleService.AddSlotsAsync(requests);
 
-            if (slots.Count == 0) return BadRequest();
-
-            var dtos = slots.Select(x => x.ToDto()).ToList();
+            var dtos = _mapper.Map<List<ScheduleDto>>(slots);
 
             return Ok(dtos);
         }
@@ -103,3 +100,4 @@ namespace BlankoCRM.Web.Controllers
 
     }
 }
+

@@ -1,6 +1,7 @@
-using BlankoCRM.Application.Abstract;
+﻿using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Application.DTOs.Mapping;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,10 +13,12 @@ namespace BlankoCRM.Web.Controllers;
 public class AppointmentsController : ControllerBase
 {
     private readonly IAppointmentService _appointmentService;
+    private readonly IMapper _mapper;
 
-    public AppointmentsController(IAppointmentService appointmentService)
+    public AppointmentsController(IAppointmentService appointmentService, IMapper mapper)
     {
         _appointmentService = appointmentService;
+        _mapper = mapper;
     }
 
     [HttpGet("{id:guid}")]
@@ -27,21 +30,21 @@ public class AppointmentsController : ControllerBase
             return NotFound();
         }
 
-        return Ok(appointment.ToDto());
+        return Ok(_mapper.Map<AppointmentDto>(appointment));
     }
 
     [HttpGet("all")]
     public async Task<ActionResult<List<AppointmentDto>>> GetAllAsync()
     {
         var appointments = await _appointmentService.GetAllAppointmentsAsync();
-        return Ok(appointments.Select(a => a.ToDto()).ToList());
+        return Ok(_mapper.Map<List<AppointmentDto>>(appointments));
     }
 
     [HttpGet("calendar")]
     public async Task<ActionResult<List<AppointmentDto>>> GetForDay([FromQuery] DateTime date)
     {
         var appointments = await _appointmentService.GetForDayAsync(date);
-        var dtos = appointments.Select(a => a.ToDto());
+        var dtos = _mapper.Map<List<AppointmentDto>>(appointments);
         return Ok(dtos.ToList());
     }
 
@@ -52,23 +55,17 @@ public class AppointmentsController : ControllerBase
             request.ClientId,
             request.Services,
             request.StartTime,
-            request.Notes);
+            request.Notes,
+            request.SalonId);
 
-        return CreatedAtAction(nameof(GetById), new { id = appointment.Id }, appointment.ToDto());
+        return CreatedAtAction(nameof(GetById), new { id = appointment.Id }, _mapper.Map<AppointmentDto>(appointment));
     }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAppointmentRequest request)
     {
-        try
-        {
-            await _appointmentService.UpdateAsync(id, request.StartTime, request.Status, request.Notes);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        await _appointmentService.UpdateAsync(id, request.StartTime, request.Status, request.Notes);
+        return NoContent();
     }
 
     [HttpDelete("{id:guid}")]
@@ -85,3 +82,4 @@ public class AppointmentsController : ControllerBase
         return NoContent();
     }
 }
+

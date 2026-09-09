@@ -1,4 +1,4 @@
-using BlankoCRM.Application.DTOs;
+﻿using BlankoCRM.Application.DTOs;
 using BlankoCRM.Core.Entities;
 
 namespace BlankoCRM.Application.Abstract
@@ -27,7 +27,7 @@ namespace BlankoCRM.Application.Abstract
         /// <summary>
         /// Создать новую запись.
         /// </summary>
-        Task<Appointment> CreateAsync(Guid clientId, List<ServiceInput> serviceInputs, DateTime startTime, string? notes = null);
+        Task<Appointment> CreateAsync(Guid clientId, List<ServiceInput> serviceInputs, DateTime startTime, string? notes = null, Guid? salonId = null);
 
         /// <summary>
         /// Обновить существующую запись.
@@ -45,3 +45,4 @@ namespace BlankoCRM.Application.Abstract
         Task CancelAsync(Guid id);
     }
 }
+

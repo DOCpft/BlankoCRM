@@ -1,6 +1,7 @@
-using BlankoCRM.Application.Abstract;
+﻿using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Application.DTOs.Mapping;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,17 +13,19 @@ namespace BlankoCRM.Web.Controllers;
 public class ClientsController : ControllerBase
 {
     private readonly IClientService _clientService;
+    private readonly IMapper _mapper;
 
-    public ClientsController(IClientService clientService)
+    public ClientsController(IClientService clientService, IMapper mapper)
     {
         _clientService = clientService;
+        _mapper = mapper;
     }
 
     [HttpGet("all")]
     public async Task<ActionResult<List<ClientDto>>> GetAll([FromQuery] string? search)
     {
         var clients = await _clientService.GetAllAsync(search);
-        var dtos = clients.Select(c => c.ToDto()).ToList();
+        var dtos = _mapper.Map<List<ClientDto>>(clients);
         return Ok(dtos);
     }
 
@@ -31,7 +34,7 @@ public class ClientsController : ControllerBase
     {
         var client = await _clientService.GetByIdAsync(id);
 
-        return Ok(client!.ToDto());
+        return Ok(_mapper.Map<ClientDto>(client));
     }
 
     [HttpPost("create")]
@@ -42,9 +45,10 @@ public class ClientsController : ControllerBase
             request.Phone,
             request.Telegram,
             request.BirthDate,
-            request.Notes);
+            request.Notes,
+            request.SalonId);
 
-        return CreatedAtAction(nameof(GetById), new { id = client.Id }, client.ToDto());
+        return CreatedAtAction(nameof(GetById), new { id = client.Id }, _mapper.Map<ClientDto>(client));
     }
 
     [HttpPut("update/{id:guid}")]
@@ -56,7 +60,8 @@ public class ClientsController : ControllerBase
             request.Phone,
             request.Telegram,
             request.BirthDate,
-            request.Notes);
+            request.Notes,
+            request.SalonId);
 
         return NoContent();
     }
@@ -68,3 +73,4 @@ public class ClientsController : ControllerBase
         return NoContent();
     }
 }
+

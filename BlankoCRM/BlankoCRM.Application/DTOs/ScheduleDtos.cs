@@ -18,7 +18,7 @@
         );
 
     public record CreateManySlotsRequest(
-        List<Tuple<DateTime, Guid?>> tpSlotsList
+        List<CreateSlotRequest> Slots
         );
 
     public record UpdateSlotRequest(
@@ -26,3 +26,4 @@
         Guid? AppointmentId
         );
 }
+

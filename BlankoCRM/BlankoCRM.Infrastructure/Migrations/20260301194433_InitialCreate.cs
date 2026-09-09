@@ -12,7 +12,7 @@ namespace BlankoCRM.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Tenants",
+                name: "Organizations",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -25,7 +25,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Tenants", x => x.Id);
+                    table.PrimaryKey("PK_Organizations", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -33,7 +33,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     Telegram = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
@@ -46,9 +46,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_Clients", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Clients_Tenants_TenantId",
-                        column: x => x.TenantId,
-                        principalTable: "Tenants",
+                        name: "FK_Clients_Organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "Organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -58,7 +58,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     DurationMinutes = table.Column<int>(type: "integer", nullable: false),
                     Price = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
@@ -71,9 +71,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_Services", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Services_Tenants_TenantId",
-                        column: x => x.TenantId,
-                        principalTable: "Tenants",
+                        name: "FK_Services_Organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "Organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -83,7 +83,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
                     ClientId = table.Column<Guid>(type: "uuid", nullable: false),
                     StartTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     EndTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -104,9 +104,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Appointments_Tenants_TenantId",
-                        column: x => x.TenantId,
-                        principalTable: "Tenants",
+                        name: "FK_Appointments_Organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "Organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -116,7 +116,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrganizationId = table.Column<Guid>(type: "uuid", nullable: false),
                     AppointmentId = table.Column<Guid>(type: "uuid", nullable: false),
                     ServiceId = table.Column<Guid>(type: "uuid", nullable: false),
                     Price = table.Column<decimal>(type: "numeric", nullable: false),
@@ -140,9 +140,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_AppointmentServices_Tenants_TenantId",
-                        column: x => x.TenantId,
-                        principalTable: "Tenants",
+                        name: "FK_AppointmentServices_Organizations_OrganizationId",
+                        column: x => x.OrganizationId,
+                        principalTable: "Organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -158,14 +158,14 @@ namespace BlankoCRM.Infrastructure.Migrations
                 column: "StartTime");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Appointments_TenantId",
+                name: "IX_Appointments_OrganizationId",
                 table: "Appointments",
-                column: "TenantId");
+                column: "OrganizationId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Appointments_TenantId_StartTime",
+                name: "IX_Appointments_OrganizationId_StartTime",
                 table: "Appointments",
-                columns: new[] { "TenantId", "StartTime" });
+                columns: new[] { "OrganizationId", "StartTime" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_AppointmentServices_AppointmentId",
@@ -178,9 +178,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                 column: "ServiceId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AppointmentServices_TenantId",
+                name: "IX_AppointmentServices_OrganizationId",
                 table: "AppointmentServices",
-                column: "TenantId");
+                column: "OrganizationId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Clients_Phone",
@@ -193,36 +193,36 @@ namespace BlankoCRM.Infrastructure.Migrations
                 column: "Telegram");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Clients_TenantId",
+                name: "IX_Clients_OrganizationId",
                 table: "Clients",
-                column: "TenantId");
+                column: "OrganizationId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Clients_TenantId_Phone",
+                name: "IX_Clients_OrganizationId_Phone",
                 table: "Clients",
-                columns: new[] { "TenantId", "Phone" },
+                columns: new[] { "OrganizationId", "Phone" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Services_TenantId",
+                name: "IX_Services_OrganizationId",
                 table: "Services",
-                column: "TenantId");
+                column: "OrganizationId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Services_TenantId_Name",
+                name: "IX_Services_OrganizationId_Name",
                 table: "Services",
-                columns: new[] { "TenantId", "Name" },
+                columns: new[] { "OrganizationId", "Name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Tenants_Email",
-                table: "Tenants",
+                name: "IX_Organizations_Email",
+                table: "Organizations",
                 column: "Email",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Tenants_TelegramChatId",
-                table: "Tenants",
+                name: "IX_Organizations_TelegramChatId",
+                table: "Organizations",
                 column: "TelegramChatId");
         }
 
@@ -242,7 +242,8 @@ namespace BlankoCRM.Infrastructure.Migrations
                 name: "Clients");
 
             migrationBuilder.DropTable(
-                name: "Tenants");
+                name: "Organizations");
         }
     }
 }
+

@@ -10,10 +10,11 @@ namespace BlankoCRM.Core.Entities
     /// <summary>
     /// Записи клиентов. Связывает клиента, услугу и мастера в конкретное время
     /// </summary>
-    public class Appointment: IMultiTenant
+    public class Appointment: IOrganizationEntity
     {
         public Guid Id { get; set; }
-        public Guid TenantId { get; set; }          // Мастер, которому принадлежит запись
+        public Guid OrganizationId { get; set; }          // Мастер, которому принадлежит запись
+        public Guid? SalonId { get; set; }
         public Guid ClientId { get; set; }           // Какой клиент
         public DateTime StartTime { get; set; }      // Начало (важно для календаря)
         public DateTime EndTime { get; set; }        // Конец (можно вычислить из длительности услуги, но хранить удобнее)
@@ -24,7 +25,8 @@ namespace BlankoCRM.Core.Entities
         public DateTime? UpdatedAt { get; set; }
 
         // Навигационные свойства
-        public Tenant Tenant { get; set; }
+        public Organization Organization { get; set; }
+        public Salon? Salon { get; set; }
         public Client Client { get; set; }
         public ICollection<AppointmentService> AppointmentServices { get; set; }
 
@@ -47,3 +49,4 @@ namespace BlankoCRM.Core.Entities
         NoShow       // Клиент не пришёл
     }
 }
+

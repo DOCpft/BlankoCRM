@@ -1,5 +1,6 @@
-using BlankoCRM.Application;
+﻿using BlankoCRM.Application;
 using BlankoCRM.Core.Entities;
+using BlankoCRM.Core.Interfaces;
 using BlankoCRM.Infrastructure;
 using BlankoCRM.Infrastructure.Data;
 using BlankoCRM.Web.Middleware;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using FluentValidation.AspNetCore;
 using System.Security.Claims;
 using System.Text;
 
@@ -21,9 +23,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
            .LogTo(Console.WriteLine, LogLevel.Information)
            .EnableSensitiveDataLogging());
 
-builder.Services.AddScoped<IPasswordHasher<Tenant>, PasswordHasher<Tenant>>();
+builder.Services.AddScoped<IOrganizationContext, OrganizationContext>();
+builder.Services.AddInfrastructureRepositories();
 
-// Регистрируем сервисы слоя Application
+builder.Services
+    .AddIdentityCore<AppUser>()
+    .AddRoles<AppRole>()
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddSignInManager()
+    .AddDefaultTokenProviders();
+
+// Р РµРіРёСЃС‚СЂРёСЂСѓРµРј СЃРµСЂРІРёСЃС‹ СЃР»РѕСЏ Application
 builder.Services.AddApplicationServices();
 
 // JWT configuration
@@ -50,6 +60,7 @@ builder.Services
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -58,7 +69,7 @@ builder.Services.AddSwaggerGen(c =>
     var jwtSecurityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Введите токен в формате: Bearer {token}",
+        Description = "Р’РІРµРґРёС‚Рµ С‚РѕРєРµРЅ РІ С„РѕСЂРјР°С‚Рµ: Bearer {token}",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
@@ -67,7 +78,7 @@ builder.Services.AddSwaggerGen(c =>
 
     c.AddSecurityDefinition("Bearer", jwtSecurityScheme);
 
-    // Добавляем SecurityRequirement, чтобы Swagger UI применял токен ко всем эндпоинтам
+    // Р”РѕР±Р°РІР»СЏРµРј SecurityRequirement, С‡С‚РѕР±С‹ Swagger UI РїСЂРёРјРµРЅСЏР» С‚РѕРєРµРЅ РєРѕ РІСЃРµРј СЌРЅРґРїРѕРёРЅС‚Р°Рј
     c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
@@ -83,7 +94,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Применяем миграции (для разработки)
+// РџСЂРёРјРµРЅСЏРµРј РјРёРіСЂР°С†РёРё (РґР»СЏ СЂР°Р·СЂР°Р±РѕС‚РєРё)
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -97,35 +108,43 @@ app.UseSwaggerUI();
 
 app.UseStaticFiles();
 
-// Глобальный middleware для обработки исключений (должен быть до остальных middleware)
+// Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ middleware РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё РёСЃРєР»СЋС‡РµРЅРёР№ (РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РґРѕ РѕСЃС‚Р°Р»СЊРЅС‹С… middleware)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Middleware: устанавливает TenantId из JWT для авторизованных запросов,
-// и сбрасывает (очищает) для неавторизованных.
-// Это критически важно, чтобы глобальные Query Filters не применялись
-// к неавторизованным запросам (регистрация, логин).
+// Middleware: СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ OrganizationId РёР· JWT РґР»СЏ Р°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹С… Р·Р°РїСЂРѕСЃРѕРІ,
+// Рё СЃР±СЂР°СЃС‹РІР°РµС‚ (РѕС‡РёС‰Р°РµС‚) РґР»СЏ РЅРµР°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹С….
+// Р­С‚Рѕ РєСЂРёС‚РёС‡РµСЃРєРё РІР°Р¶РЅРѕ, С‡С‚РѕР±С‹ РіР»РѕР±Р°Р»СЊРЅС‹Рµ Query Filters РЅРµ РїСЂРёРјРµРЅСЏР»РёСЃСЊ
+// Рє РЅРµР°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹Рј Р·Р°РїСЂРѕСЃР°Рј (СЂРµРіРёСЃС‚СЂР°С†РёСЏ, Р»РѕРіРёРЅ).
 app.Use(async (context, next) =>
 {
-    // Сбрасываем TenantId в начале каждого запроса
-    TenantContext.Clear();
+    // РЎР±СЂР°СЃС‹РІР°РµРј OrganizationId РІ РЅР°С‡Р°Р»Рµ РєР°Р¶РґРѕРіРѕ Р·Р°РїСЂРѕСЃР°
+    var organizationContext = context.RequestServices.GetRequiredService<IOrganizationContext>();
+    organizationContext.Clear();
 
     if (context.User.Identity?.IsAuthenticated == true)
     {
-        var tenantIdClaim = context.User.FindFirst("tenantId")?.Value
-                            ?? context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var organizationIdClaim = context.User.FindFirst("organizationId")?.Value;
 
-        if (Guid.TryParse(tenantIdClaim, out var tenantId))
+        if (Guid.TryParse(organizationIdClaim, out var organizationId))
         {
-            TenantContext.CurrentTenantId = tenantId;
+            organizationContext.SetCurrentOrganizationId(organizationId);
         }
     }
 
-    await next();
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        organizationContext.Clear();
+    }
 });
 
 app.MapControllers();
 
 app.Run();
+

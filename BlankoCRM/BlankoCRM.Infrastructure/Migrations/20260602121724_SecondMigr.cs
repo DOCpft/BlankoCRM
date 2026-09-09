@@ -15,7 +15,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                 table: "AppointmentServices");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_AppointmentServices_Tenants_TenantId",
+                name: "FK_AppointmentServices_Organizations_OrganizationId",
                 table: "AppointmentServices");
 
             migrationBuilder.AlterColumn<string>(
@@ -55,10 +55,10 @@ namespace BlankoCRM.Infrastructure.Migrations
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_AppointmentServices_Tenants_TenantId",
+                name: "FK_AppointmentServices_Organizations_OrganizationId",
                 table: "AppointmentServices",
-                column: "TenantId",
-                principalTable: "Tenants",
+                column: "OrganizationId",
+                principalTable: "Organizations",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Restrict);
         }
@@ -71,7 +71,7 @@ namespace BlankoCRM.Infrastructure.Migrations
                 table: "AppointmentServices");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_AppointmentServices_Tenants_TenantId",
+                name: "FK_AppointmentServices_Organizations_OrganizationId",
                 table: "AppointmentServices");
 
             migrationBuilder.AlterColumn<string>(
@@ -110,12 +110,13 @@ namespace BlankoCRM.Infrastructure.Migrations
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_AppointmentServices_Tenants_TenantId",
+                name: "FK_AppointmentServices_Organizations_OrganizationId",
                 table: "AppointmentServices",
-                column: "TenantId",
-                principalTable: "Tenants",
+                column: "OrganizationId",
+                principalTable: "Organizations",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Cascade);
         }
     }
 }
+

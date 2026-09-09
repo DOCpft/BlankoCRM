@@ -1,4 +1,4 @@
-using BlankoCRM.Core.Entities;
+﻿using BlankoCRM.Core.Entities;
 
 namespace BlankoCRM.Application.Abstract
 {
@@ -20,12 +20,12 @@ namespace BlankoCRM.Application.Abstract
         /// <summary>
         /// Создать нового клиента.
         /// </summary>
-        Task<Client> CreateAsync(string name, string phone, string? telegram, DateTime? birthDate, string? notes);
+        Task<Client> CreateAsync(string name, string phone, string? telegram, DateTime? birthDate, string? notes, Guid? salonId = null);
 
         /// <summary>
         /// Обновить существующего клиента.
         /// </summary>
-        Task UpdateAsync(Guid id, string? name, string? phone, string? telegram, DateTime? birthDate, string? notes);
+        Task UpdateAsync(Guid id, string? name, string? phone, string? telegram, DateTime? birthDate, string? notes, Guid? salonId = null);
 
         /// <summary>
         /// Удалить клиента.
@@ -33,3 +33,4 @@ namespace BlankoCRM.Application.Abstract
         Task DeleteAsync(Guid id);
     }
 }
+

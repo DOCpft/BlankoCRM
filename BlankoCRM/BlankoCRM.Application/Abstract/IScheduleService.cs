@@ -1,4 +1,5 @@
 ﻿using BlankoCRM.Core.Entities;
+using BlankoCRM.Application.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -18,14 +19,14 @@ namespace BlankoCRM.Application.Abstract
         /// Item1 - Время слота, Item2 - Guid записи (appointment)
         /// </summary>
         /// <returns></returns>
-        public Task<List<Schedule>> AddSlotsAsync(List<Tuple<DateTime, Guid?>> addedSlots);
+        public Task<List<Schedule>> AddSlotsAsync(List<CreateSlotRequest> addedSlots);
         public Task<Schedule> AddSlotAsync(DateTime slotTime, Guid? appointment);
 
         /// <summary>
         /// Методы для удаления слотов
         /// </summary>
         /// <param name="selectedSlot"></param>
-        /// <exception cref="KeyNotFoundException"> Если слот с указаным ID не найден</exception>
+        /// <exception cref="NotFoundException"> Если слот с указаным ID не найден</exception>
         /// <returns></returns>
         public Task<bool> RemoveSlotAsync(Guid selectedSlot);
         public Task<int> RemoveSlotsAsync(List<Guid> selectedSlots);
@@ -34,7 +35,7 @@ namespace BlankoCRM.Application.Abstract
         /// Методы для получения слотов
         /// </summary>
         /// <param name="SlotId"></param>
-        /// <exception cref="KeyNotFoundException"> Если слот с указаным ID не найден</exception>
+        /// <exception cref="NotFoundException"> Если слот с указаным ID не найден</exception>
         /// <returns></returns>
         public Task<Schedule> GetSlotByIdAsync(Guid SlotId);
         public Task<List<Schedule>> GetScheduleByPeriodAsync(DateTime dateFrom, DateTime dateTo);
@@ -45,9 +46,10 @@ namespace BlankoCRM.Application.Abstract
         /// <param name="id"></param>
         /// <param name="slotTime"></param>
         /// <param name="appointmentId"></param>
-        /// <exception cref="KeyNotFoundException"> Если слот с указаным ID не найден</exception>
+        /// <exception cref="NotFoundException"> Если слот с указаным ID не найден</exception>
         /// <returns></returns>
         public Task UpdateSlotAsync(Guid id, DateTime? slotTime,  Guid? appointmentId);
 
     }
 }
+

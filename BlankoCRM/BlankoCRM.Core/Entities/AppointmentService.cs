@@ -7,10 +7,11 @@ using System.Threading.Tasks;
 
 namespace BlankoCRM.Core.Entities
 {
-    public class AppointmentService: IMultiTenant
+    public class AppointmentService: IOrganizationEntity
     {
         public Guid Id { get; set; }
-        public Guid TenantId { get; set; }
+        public Guid OrganizationId { get; set; }
+        public Guid? SalonId { get; set; }
         public Guid AppointmentId { get; set; }
         public Guid ServiceId { get; set; }
         public decimal Price { get; set; }           // Цена на момент записи (копируется из услуги, но может быть изменена)
@@ -19,8 +20,10 @@ namespace BlankoCRM.Core.Entities
         public int Quantity { get; set; } = 1;      // Количество (например, 2 часа массажа = 2 единицы по 60 минут)
 
         // Навигационные свойства
-        public Tenant Tenant { get; set; }
+        public Organization Organization { get; set; }
+        public Salon? Salon { get; set; }
         public Appointment Appointment { get; set; }
         public Service Service { get; set; }
     }
 }
+

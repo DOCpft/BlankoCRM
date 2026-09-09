@@ -10,10 +10,11 @@ namespace BlankoCRM.Core.Entities
     /// <summary>
     /// Данные о клиентах мастера
     /// </summary>
-    public class Client: IMultiTenant
+    public class Client: IOrganizationEntity
     {
         public Guid Id { get; set; }
-        public Guid TenantId { get; set; }          // Привязка к мастеру (мультитенантность)
+        public Guid OrganizationId { get; set; }          // Привязка к мастеру (мультитенантность)
+        public Guid? SalonId { get; set; }
         public string Name { get; set; }             // Имя клиента
         public string Phone { get; set; }            // Телефон (для связи и напоминаний)
         public string? Telegram { get; set; }           // Опционально
@@ -23,7 +24,9 @@ namespace BlankoCRM.Core.Entities
         public DateTime? UpdatedAt { get; set; }
 
         // Навигационное свойство (не обязательно, но удобно)
-        public Tenant Tenant { get; set; }
+        public Organization Organization { get; set; }
+        public Salon? Salon { get; set; }
         public ICollection<Appointment> Appointments { get; set; }
     }
 }
+

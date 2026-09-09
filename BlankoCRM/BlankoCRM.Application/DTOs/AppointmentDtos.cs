@@ -1,17 +1,23 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using BlankoCRM.Core.Entities;
 
 namespace BlankoCRM.Application.DTOs
 {
     /// <summary>
-    /// DTO для отображения записи на приём.
+    /// DTO РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ Р·Р°РїРёСЃРё РЅР° РїСЂРёС‘Рј.
     /// </summary>
+    public record AppointmentServiceDto(
+        Guid ServiceId,
+        string? ServiceName,
+        decimal Price,
+        int DurationMinutes,
+        int Quantity);
+
     public record AppointmentDto(
         Guid Id,
         Guid ClientId,
         string ClientName,
-        Guid? ServiceId,
-        string? ServiceName,
+        List<AppointmentServiceDto> Services,
         DateTime StartTime,
         DateTime EndTime,
         AppointmentStatus Status,
@@ -20,21 +26,23 @@ namespace BlankoCRM.Application.DTOs
         int TotalDurationMinutes);
 
     /// <summary>
-    /// Запрос на создание новой записи.
+    /// Р—Р°РїСЂРѕСЃ РЅР° СЃРѕР·РґР°РЅРёРµ РЅРѕРІРѕР№ Р·Р°РїРёСЃРё.
     /// </summary>
     public record CreateAppointmentRequest(
-        [Required(ErrorMessage = "ID клиента обязателен")]
+        [Required(ErrorMessage = "ID РєР»РёРµРЅС‚Р° РѕР±СЏР·Р°С‚РµР»РµРЅ")]
         Guid ClientId,
 
-        [Required(ErrorMessage = "Необходимо указать хотя бы одну услугу")]
-        [MinLength(1, ErrorMessage = "Должна быть указана хотя бы одна услуга")]
-        List<ServiceInput> Services,   // ← список с индивидуальными параметрами
+        [Required(ErrorMessage = "РќРµРѕР±С…РѕРґРёРјРѕ СѓРєР°Р·Р°С‚СЊ С…РѕС‚СЏ Р±С‹ РѕРґРЅСѓ СѓСЃР»СѓРіСѓ")]
+        [MinLength(1, ErrorMessage = "Р”РѕР»Р¶РЅР° Р±С‹С‚СЊ СѓРєР°Р·Р°РЅР° С…РѕС‚СЏ Р±С‹ РѕРґРЅР° СѓСЃР»СѓРіР°")]
+        List<ServiceInput> Services,   // в†ђ СЃРїРёСЃРѕРє СЃ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹РјРё РїР°СЂР°РјРµС‚СЂР°РјРё
 
-        [Required(ErrorMessage = "Время начала обязательно")]
+        [Required(ErrorMessage = "Р’СЂРµРјСЏ РЅР°С‡Р°Р»Р° РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ")]
         DateTime StartTime,
 
-        [MaxLength(500, ErrorMessage = "Заметки не могут быть длиннее 500 символов")]
-        string? Notes
+        [MaxLength(500, ErrorMessage = "Р—Р°РјРµС‚РєРё РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 500 СЃРёРјРІРѕР»РѕРІ")]
+        string? Notes,
+
+        Guid? SalonId = null
     );
 
     public record ServiceInput(
@@ -45,12 +53,13 @@ namespace BlankoCRM.Application.DTOs
     );
 
     /// <summary>
-    /// Запрос на обновление существующей записи.
+    /// Р—Р°РїСЂРѕСЃ РЅР° РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµР№ Р·Р°РїРёСЃРё.
     /// </summary>
     public record UpdateAppointmentRequest(
         DateTime? StartTime,
         AppointmentStatus? Status,
 
-        [MaxLength(500, ErrorMessage = "Заметки не могут быть длиннее 500 символов")]
+        [MaxLength(500, ErrorMessage = "Р—Р°РјРµС‚РєРё РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 500 СЃРёРјРІРѕР»РѕРІ")]
         string? Notes);
 }
+

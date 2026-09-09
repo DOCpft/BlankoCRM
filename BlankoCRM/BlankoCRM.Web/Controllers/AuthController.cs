@@ -1,4 +1,4 @@
-using BlankoCRM.Application.Abstract;
+﻿using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,7 +16,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    public async Task<IActionResult> Register([FromBody] RegisterUserRequest request)
     {
         if (!ModelState.IsValid)
         {
@@ -25,8 +25,8 @@ public class AuthController : ControllerBase
 
         try
         {
-            await _authService.RegisterAsync(request.Name, request.Email, request.Password);
-            return Ok();
+            await _authService.RegisterAsync(request.Name, request.Email, request.Password, request.OrganizationName);
+            return StatusCode(StatusCodes.Status201Created);
         }
         catch (InvalidOperationException ex)
         {
@@ -35,7 +35,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginUserRequest request)
     {
         if (!ModelState.IsValid)
         {
@@ -53,3 +53,4 @@ public class AuthController : ControllerBase
         }
     }
 }
+

@@ -1,4 +1,4 @@
-namespace BlankoCRM.Application.Abstract
+﻿namespace BlankoCRM.Application.Abstract
 {
     /// <summary>
     /// Сервис аутентификации.
@@ -8,7 +8,7 @@ namespace BlankoCRM.Application.Abstract
         /// <summary>
         /// Зарегистрировать нового мастера.
         /// </summary>
-        Task RegisterAsync(string? name, string email, string password);
+        Task RegisterAsync(string? name, string email, string password, string? organizationName);
 
         /// <summary>
         /// Выполнить вход и получить JWT-токен.
@@ -16,3 +16,4 @@ namespace BlankoCRM.Application.Abstract
         Task<(string Token, string Name, string Email)> LoginAsync(string email, string password);
     }
 }
+

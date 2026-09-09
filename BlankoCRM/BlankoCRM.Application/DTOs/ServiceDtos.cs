@@ -1,48 +1,52 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace BlankoCRM.Application.DTOs;
 
 /// <summary>
-/// DTO для отображения услуги.
+/// DTO РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ СѓСЃР»СѓРіРё.
 /// </summary>
 public record ServiceDto(
     Guid Id,
     string Name,
     int DurationMinutes,
     decimal Price,
-    string? Description);
+    string? Description,
+    Guid? SalonId = null);
 
 /// <summary>
-/// Запрос на создание новой услуги.
+/// Р—Р°РїСЂРѕСЃ РЅР° СЃРѕР·РґР°РЅРёРµ РЅРѕРІРѕР№ СѓСЃР»СѓРіРё.
 /// </summary>
 public record CreateServiceRequest(
-    [Required(ErrorMessage = "Название услуги обязательно")]
-    [MaxLength(100, ErrorMessage = "Название не может быть длиннее 100 символов")]
+    [Required(ErrorMessage = "РќР°Р·РІР°РЅРёРµ СѓСЃР»СѓРіРё РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ")]
+    [MaxLength(100, ErrorMessage = "РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 100 СЃРёРјРІРѕР»РѕРІ")]
     string Name,
 
-    [Required(ErrorMessage = "Длительность обязательна")]
-    [Range(1, 1440, ErrorMessage = "Длительность должна быть от 1 до 1440 минут")]
+    [Required(ErrorMessage = "Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ РѕР±СЏР·Р°С‚РµР»СЊРЅР°")]
+    [Range(1, 1440, ErrorMessage = "Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РѕС‚ 1 РґРѕ 1440 РјРёРЅСѓС‚")]
     int DurationMinutes,
 
-    [Required(ErrorMessage = "Цена обязательна")]
-    [Range(0, 999999.99, ErrorMessage = "Цена должна быть от 0 до 999999.99")]
+    [Required(ErrorMessage = "Р¦РµРЅР° РѕР±СЏР·Р°С‚РµР»СЊРЅР°")]
+    [Range(0, 999999.99, ErrorMessage = "Р¦РµРЅР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РѕС‚ 0 РґРѕ 999999.99")]
     decimal Price,
 
-    [MaxLength(500, ErrorMessage = "Описание не может быть длиннее 500 символов")]
-    string? Description);
+    [MaxLength(500, ErrorMessage = "РћРїРёСЃР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 500 СЃРёРјРІРѕР»РѕРІ")]
+    string? Description,
+    Guid? SalonId = null);
 
 /// <summary>
-/// Запрос на обновление существующей услуги.
+/// Р—Р°РїСЂРѕСЃ РЅР° РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµР№ СѓСЃР»СѓРіРё.
 /// </summary>
 public record UpdateServiceRequest(
-    [MaxLength(100, ErrorMessage = "Название не может быть длиннее 100 символов")]
+    [MaxLength(100, ErrorMessage = "РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 100 СЃРёРјРІРѕР»РѕРІ")]
     string? Name,
 
-    [Range(1, 1440, ErrorMessage = "Длительность должна быть от 1 до 1440 минут")]
+    [Range(1, 1440, ErrorMessage = "Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РѕС‚ 1 РґРѕ 1440 РјРёРЅСѓС‚")]
     int? DurationMinutes,
 
-    [Range(0, 999999.99, ErrorMessage = "Цена должна быть от 0 до 999999.99")]
+    [Range(0, 999999.99, ErrorMessage = "Р¦РµРЅР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РѕС‚ 0 РґРѕ 999999.99")]
     decimal? Price,
 
-    [MaxLength(500, ErrorMessage = "Описание не может быть длиннее 500 символов")]
-    string? Description);
+    [MaxLength(500, ErrorMessage = "РћРїРёСЃР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 500 СЃРёРјРІРѕР»РѕРІ")]
+    string? Description,
+    Guid? SalonId = null);
+
