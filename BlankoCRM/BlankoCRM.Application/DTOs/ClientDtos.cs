@@ -3,8 +3,15 @@
 namespace BlankoCRM.Application.DTOs
 {
     /// <summary>
-    /// DTO РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РєР»РёРµРЅС‚Р°.
+    /// DTO для отображения клиента.
     /// </summary>
+    /// <param name="Id">Идентификатор клиента.</param>
+    /// <param name="Name">Имя клиента.</param>
+    /// <param name="Phone">Телефон клиента.</param>
+    /// <param name="Telegram">Telegram клиента (необязательно).</param>
+    /// <param name="BirthDate">Дата рождения клиента (необязательно).</param>
+    /// <param name="Notes">Заметки о клиенте.</param>
+    /// <param name="SalonId">Идентификатор салона (необязательно).</param>
     public record ClientDto(
         Guid Id,
         string Name,
@@ -15,45 +22,56 @@ namespace BlankoCRM.Application.DTOs
         Guid? SalonId = null);
 
     /// <summary>
-    /// Р—Р°РїСЂРѕСЃ РЅР° СЃРѕР·РґР°РЅРёРµ РЅРѕРІРѕРіРѕ РєР»РёРµРЅС‚Р°.
+    /// Запрос на создание нового клиента.
     /// </summary>
+    /// <param name="Name">Имя клиента. Обязательно (не более 200 символов).</param>
+    /// <param name="Phone">Телефон клиента. Обязателен (не более 20 символов).</param>
+    /// <param name="Telegram">Telegram клиента (не более 100 символов).</param>
+    /// <param name="BirthDate">Дата рождения клиента (необязательно).</param>
+    /// <param name="Notes">Заметки (не более 500 символов).</param>
+    /// <param name="SalonId">Идентификатор салона (необязательно).</param>
     public record CreateClientRequest(
-        [Required(ErrorMessage = "РРјСЏ РєР»РёРµРЅС‚Р° РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ")]
-        [MaxLength(200, ErrorMessage = "РРјСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 200 СЃРёРјРІРѕР»РѕРІ")]
+        [Required(ErrorMessage = "Имя клиента обязательно")]
+        [MaxLength(200, ErrorMessage = "Имя не может быть длиннее 200 символов")]
         string Name,
 
-        [Required(ErrorMessage = "РўРµР»РµС„РѕРЅ РѕР±СЏР·Р°С‚РµР»РµРЅ")]
-        [MaxLength(20, ErrorMessage = "РўРµР»РµС„РѕРЅ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 20 СЃРёРјРІРѕР»РѕРІ")]
-        [Phone(ErrorMessage = "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ С„РѕСЂРјР°С‚ С‚РµР»РµС„РѕРЅР°")]
+        [Required(ErrorMessage = "Телефон обязателен")]
+        [MaxLength(20, ErrorMessage = "Телефон не может быть длиннее 20 символов")]
+        [Phone(ErrorMessage = "Некорректный формат телефона")]
         string Phone,
 
-        [MaxLength(100, ErrorMessage = "Telegram РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 100 СЃРёРјРІРѕР»РѕРІ")]
+        [MaxLength(100, ErrorMessage = "Telegram не может быть длиннее 100 символов")]
         string? Telegram,
 
         DateTime? BirthDate,
 
-        [MaxLength(500, ErrorMessage = "Р—Р°РјРµС‚РєРё РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 500 СЃРёРјРІРѕР»РѕРІ")]
+        [MaxLength(500, ErrorMessage = "Заметки не могут быть длиннее 500 символов")]
         string? Notes,
         Guid? SalonId = null);
 
     /// <summary>
-    /// Р—Р°РїСЂРѕСЃ РЅР° РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµРіРѕ РєР»РёРµРЅС‚Р°.
+    /// Запрос на обновление существующего клиента.
     /// </summary>
+    /// <param name="Name">Имя клиента (не более 200 символов).</param>
+    /// <param name="Phone">Телефон клиента (не более 20 символов).</param>
+    /// <param name="Telegram">Telegram клиента (не более 100 символов).</param>
+    /// <param name="BirthDate">Дата рождения клиента.</param>
+    /// <param name="Notes">Заметки (не более 500 символов).</param>
+    /// <param name="SalonId">Идентификатор салона.</param>
     public record UpdateClientRequest(
-        [MaxLength(200, ErrorMessage = "РРјСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 200 СЃРёРјРІРѕР»РѕРІ")]
+        [MaxLength(200, ErrorMessage = "Имя не может быть длиннее 200 символов")]
         string? Name,
 
-        [MaxLength(20, ErrorMessage = "РўРµР»РµС„РѕРЅ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 20 СЃРёРјРІРѕР»РѕРІ")]
-        [Phone(ErrorMessage = "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ С„РѕСЂРјР°С‚ С‚РµР»РµС„РѕРЅР°")]
+        [MaxLength(20, ErrorMessage = "Телефон не может быть длиннее 20 символов")]
+        [Phone(ErrorMessage = "Некорректный формат телефона")]
         string? Phone,
 
-        [MaxLength(100, ErrorMessage = "Telegram РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 100 СЃРёРјРІРѕР»РѕРІ")]
+        [MaxLength(100, ErrorMessage = "Telegram не может быть длиннее 100 символов")]
         string? Telegram,
 
         DateTime? BirthDate,
 
-        [MaxLength(500, ErrorMessage = "Р—Р°РјРµС‚РєРё РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 500 СЃРёРјРІРѕР»РѕРІ")]
+        [MaxLength(500, ErrorMessage = "Заметки не могут быть длиннее 500 символов")]
         string? Notes,
         Guid? SalonId = null);
 }
-

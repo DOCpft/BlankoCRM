@@ -3,39 +3,47 @@
 namespace BlankoCRM.Application.DTOs
 {
     /// <summary>
-    /// Р—Р°РїСЂРѕСЃ РЅР° СЂРµРіРёСЃС‚СЂР°С†РёСЋ РЅРѕРІРѕРіРѕ РјР°СЃС‚РµСЂР°.
+    /// Запрос на регистрацию нового мастера (пользователя).
     /// </summary>
+    /// <param name="Name">Имя пользователя (не более 100 символов).</param>
+    /// <param name="Email">Email. Обязателен, должен быть корректным.</param>
+    /// <param name="Password">Пароль (не менее 6 символов).</param>
+    /// <param name="OrganizationName">Название организации (не более 100 символов).</param>
     public record RegisterUserRequest(
-        [MaxLength(100, ErrorMessage = "РРјСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 100 СЃРёРјРІРѕР»РѕРІ")]
+        [MaxLength(100, ErrorMessage = "Имя не может быть длиннее 100 символов")]
         string? Name,
 
-        [Required(ErrorMessage = "Email РѕР±СЏР·Р°С‚РµР»РµРЅ")]
-        [EmailAddress(ErrorMessage = "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ С„РѕСЂРјР°С‚ email")]
-        [MaxLength(100, ErrorMessage = "Email РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 100 СЃРёРјРІРѕР»РѕРІ")]
+        [Required(ErrorMessage = "Email обязателен")]
+        [EmailAddress(ErrorMessage = "Некорректный формат email")]
+        [MaxLength(100, ErrorMessage = "Email не может быть длиннее 100 символов")]
         string Email,
 
-        [Required(ErrorMessage = "РџР°СЂРѕР»СЊ РѕР±СЏР·Р°С‚РµР»РµРЅ")]
-        [MinLength(6, ErrorMessage = "РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РЅРµ РјРµРЅРµРµ 6 СЃРёРјРІРѕР»РѕРІ")]
-        [MaxLength(100, ErrorMessage = "РџР°СЂРѕР»СЊ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 100 СЃРёРјРІРѕР»РѕРІ")]
+        [Required(ErrorMessage = "Пароль обязателен")]
+        [MinLength(6, ErrorMessage = "Пароль должен быть не менее 6 символов")]
+        [MaxLength(100, ErrorMessage = "Пароль не может быть длиннее 100 символов")]
         string Password,
 
         [MaxLength(100, ErrorMessage = "Название организации не может быть длиннее 100 символов")]
         string? OrganizationName);
 
     /// <summary>
-    /// Р—Р°РїСЂРѕСЃ РЅР° РІС…РѕРґ РІ СЃРёСЃС‚РµРјСѓ.
+    /// Запрос на вход в систему.
     /// </summary>
+    /// <param name="Email">Email пользователя. Обязателен.</param>
+    /// <param name="Password">Пароль пользователя. Обязателен.</param>
     public record LoginUserRequest(
-        [Required(ErrorMessage = "Email РѕР±СЏР·Р°С‚РµР»РµРЅ")]
-        [EmailAddress(ErrorMessage = "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ С„РѕСЂРјР°С‚ email")]
+        [Required(ErrorMessage = "Email обязателен")]
+        [EmailAddress(ErrorMessage = "Некорректный формат email")]
         string Email,
 
-        [Required(ErrorMessage = "РџР°СЂРѕР»СЊ РѕР±СЏР·Р°С‚РµР»РµРЅ")]
+        [Required(ErrorMessage = "Пароль обязателен")]
         string Password);
 
     /// <summary>
-    /// РћС‚РІРµС‚ СЃ С‚РѕРєРµРЅРѕРј Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРё.
+    /// Ответ с токеном аутентификации.
     /// </summary>
+    /// <param name="Token">JWT-токен доступа.</param>
+    /// <param name="Name">Имя пользователя.</param>
+    /// <param name="Email">Email пользователя.</param>
     public record AuthResponse(string Token, string Name, string Email);
 }
-

@@ -4,8 +4,13 @@ using BlankoCRM.Core.Entities;
 namespace BlankoCRM.Application.DTOs
 {
     /// <summary>
-    /// DTO РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ Р·Р°РїРёСЃРё РЅР° РїСЂРёС‘Рј.
+    /// Услуга в составе записи на приём.
     /// </summary>
+    /// <param name="ServiceId">Идентификатор услуги.</param>
+    /// <param name="ServiceName">Название услуги.</param>
+    /// <param name="Price">Цена услуги.</param>
+    /// <param name="DurationMinutes">Длительность услуги в минутах.</param>
+    /// <param name="Quantity">Количество услуг в записи.</param>
     public record AppointmentServiceDto(
         Guid ServiceId,
         string? ServiceName,
@@ -13,6 +18,19 @@ namespace BlankoCRM.Application.DTOs
         int DurationMinutes,
         int Quantity);
 
+    /// <summary>
+    /// DTO для отображения записи на приём.
+    /// </summary>
+    /// <param name="Id">Идентификатор записи.</param>
+    /// <param name="ClientId">Идентификатор клиента.</param>
+    /// <param name="ClientName">Имя клиента.</param>
+    /// <param name="Services">Список услуг в записи.</param>
+    /// <param name="StartTime">Время начала записи.</param>
+    /// <param name="EndTime">Время окончания записи.</param>
+    /// <param name="Status">Статус записи.</param>
+    /// <param name="Notes">Заметки к записи.</param>
+    /// <param name="TotalPrice">Итоговая стоимость записи.</param>
+    /// <param name="TotalDurationMinutes">Итоговая длительность записи в минутах.</param>
     public record AppointmentDto(
         Guid Id,
         Guid ClientId,
@@ -26,25 +44,37 @@ namespace BlankoCRM.Application.DTOs
         int TotalDurationMinutes);
 
     /// <summary>
-    /// Р—Р°РїСЂРѕСЃ РЅР° СЃРѕР·РґР°РЅРёРµ РЅРѕРІРѕР№ Р·Р°РїРёСЃРё.
+    /// Запрос на создание новой записи.
     /// </summary>
+    /// <param name="ClientId">Идентификатор клиента. Обязателен.</param>
+    /// <param name="Services">Список услуг. Должна быть указана хотя бы одна услуга.</param>
+    /// <param name="StartTime">Время начала записи. Обязательно.</param>
+    /// <param name="Notes">Заметки (не более 500 символов).</param>
+    /// <param name="SalonId">Идентификатор салона (необязательно).</param>
     public record CreateAppointmentRequest(
-        [Required(ErrorMessage = "ID РєР»РёРµРЅС‚Р° РѕР±СЏР·Р°С‚РµР»РµРЅ")]
+        [Required(ErrorMessage = "ID клиента обязателен")]
         Guid ClientId,
 
-        [Required(ErrorMessage = "РќРµРѕР±С…РѕРґРёРјРѕ СѓРєР°Р·Р°С‚СЊ С…РѕС‚СЏ Р±С‹ РѕРґРЅСѓ СѓСЃР»СѓРіСѓ")]
-        [MinLength(1, ErrorMessage = "Р”РѕР»Р¶РЅР° Р±С‹С‚СЊ СѓРєР°Р·Р°РЅР° С…РѕС‚СЏ Р±С‹ РѕРґРЅР° СѓСЃР»СѓРіР°")]
-        List<ServiceInput> Services,   // в†ђ СЃРїРёСЃРѕРє СЃ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹РјРё РїР°СЂР°РјРµС‚СЂР°РјРё
+        [Required(ErrorMessage = "Необходимо указать хотя бы одну услугу")]
+        [MinLength(1, ErrorMessage = "Должна быть указана хотя бы одна услуга")]
+        List<ServiceInput> Services,
 
-        [Required(ErrorMessage = "Р’СЂРµРјСЏ РЅР°С‡Р°Р»Р° РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ")]
+        [Required(ErrorMessage = "Время начала обязательно")]
         DateTime StartTime,
 
-        [MaxLength(500, ErrorMessage = "Р—Р°РјРµС‚РєРё РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 500 СЃРёРјРІРѕР»РѕРІ")]
+        [MaxLength(500, ErrorMessage = "Заметки не могут быть длиннее 500 символов")]
         string? Notes,
 
         Guid? SalonId = null
     );
 
+    /// <summary>
+    /// Входные данные по одной услуге в записи.
+    /// </summary>
+    /// <param name="ServiceId">Идентификатор услуги.</param>
+    /// <param name="DurationMinutes">Переопределённая длительность в минутах (необязательно).</param>
+    /// <param name="Price">Переопределённая цена (необязательно).</param>
+    /// <param name="Quantity">Количество (по умолчанию 1).</param>
     public record ServiceInput(
         Guid ServiceId,
         int? DurationMinutes = null,
@@ -53,8 +83,15 @@ namespace BlankoCRM.Application.DTOs
     );
 
     /// <summary>
-    /// Р—Р°РїСЂРѕСЃ РЅР° РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµР№ Р·Р°РїРёСЃРё.
+    /// Запрос на обновление существующей записи.
     /// </summary>
+    /// <param name="ClientId">Новый идентификатор клиента (необязательно).</param>
+    /// <param name="Services">Новый список услуг (необязательно).</param>
+    /// <param name="StartTime">Новое время начала (необязательно).</param>
+    /// <param name="EndTime">Новое время окончания (необязательно).</param>
+    /// <param name="Status">Новый статус (необязательно).</param>
+    /// <param name="Notes">Новые заметки (не более 500 символов).</param>
+    /// <param name="SalonId">Идентификатор салона (необязательно).</param>
     public record UpdateAppointmentRequest(
         Guid? ClientId,
         List<ServiceInput>? Services,
@@ -66,6 +103,9 @@ namespace BlankoCRM.Application.DTOs
         string? Notes,
         Guid? SalonId = null);
 
+    /// <summary>
+    /// Запрос на изменение статуса записи.
+    /// </summary>
+    /// <param name="Status">Новый статус записи.</param>
     public record UpdateAppointmentStatusRequest(AppointmentStatus Status);
 }
-

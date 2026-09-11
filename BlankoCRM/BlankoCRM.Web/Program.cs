@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using FluentValidation.AspNetCore;
+using Swashbuckle.AspNetCore.Annotations;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 
@@ -64,7 +66,38 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "BlankoCRM API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "BlankoCRM API",
+        Version = "v1",
+        Description = "API для управления записями клиентов, услугами и расписанием.",
+        Contact = new OpenApiContact
+        {
+            Name = "Support",
+            Email = "support@blanko.ru"
+        },
+        License = new OpenApiLicense
+        {
+            Name = "MIT",
+            Url = new Uri("https://opensource.org/licenses/MIT")
+        }
+    });
+
+    // XML комментарии
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+
+    // XML комментарии из слоя Application (DTO)
+    var applicationXmlFile = "BlankoCRM.Application.xml";
+    var applicationXmlPath = Path.Combine(AppContext.BaseDirectory, applicationXmlFile);
+    if (File.Exists(applicationXmlPath))
+    {
+        c.IncludeXmlComments(applicationXmlPath);
+    }
+
+    // Аннотации для операций и примеров
+    c.EnableAnnotations();
 
     var jwtSecurityScheme = new OpenApiSecurityScheme
     {
