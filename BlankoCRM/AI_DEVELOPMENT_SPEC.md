@@ -306,4 +306,4 @@ feat(appointments): add CostPrice to AppointmentService [TASK-042, step 3]
 
 **Версия:** 1.0  
 **Дата:** 2026-09-12  
-**Ответственный:** <ваше имя>
+**Ответственный:** Kirill Tkachenko
