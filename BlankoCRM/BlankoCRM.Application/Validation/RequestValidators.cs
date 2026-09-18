@@ -145,3 +145,23 @@ public sealed class CreateFreeSlotRequestListValidator : AbstractValidator<List<
         RuleForEach(requests => requests).SetValidator(slotValidator);
     }
 }
+
+public sealed class VkMiniAppAuthRequestValidator : AbstractValidator<VkMiniAppAuthRequest>
+{
+    public VkMiniAppAuthRequestValidator()
+    {
+        RuleFor(x => x.VkParams)
+            .NotEmpty()
+            .WithMessage("Параметры VK обязательны.");
+
+        RuleFor(x => x.VkParams)
+            .Must(p => p.ContainsKey("sign") && !string.IsNullOrWhiteSpace(p["sign"]))
+            .WithMessage("Отсутствует подпись VK (sign).")
+            .When(x => x.VkParams is not null && x.VkParams.Count > 0);
+
+        RuleFor(x => x.VkParams)
+            .Must(p => p.ContainsKey("vk_user_id") && long.TryParse(p["vk_user_id"], out _))
+            .WithMessage("Отсутствует или некорректен vk_user_id.")
+            .When(x => x.VkParams is not null && x.VkParams.Count > 0);
+    }
+}

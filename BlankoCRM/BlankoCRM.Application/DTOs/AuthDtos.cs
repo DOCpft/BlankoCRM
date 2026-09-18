@@ -46,4 +46,11 @@ namespace BlankoCRM.Application.DTOs
     /// <param name="Name">Имя пользователя.</param>
     /// <param name="Email">Email пользователя.</param>
     public record AuthResponse(string Token, string Name, string Email);
+
+    /// <summary>
+    /// Запрос на аутентификацию через VK Mini App.
+    /// </summary>
+    public record VkMiniAppAuthRequest(
+        [Required(ErrorMessage = "Параметры VK обязательны")]
+    Dictionary<string, string> VkParams);
 }

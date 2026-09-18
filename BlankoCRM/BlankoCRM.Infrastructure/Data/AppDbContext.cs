@@ -219,6 +219,7 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
     {
         modelBuilder.Entity<AppUser>(entity =>
         {
+            entity.HasIndex(user => user.VkUserId);
             entity.Property(user => user.Name).IsRequired().HasMaxLength(100);
             entity.HasOne(user => user.Organization)
                 .WithMany(organization => organization.Users)

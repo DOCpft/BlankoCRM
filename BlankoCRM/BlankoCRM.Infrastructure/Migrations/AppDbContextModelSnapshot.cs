@@ -113,6 +113,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<long?>("VkUserId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")
@@ -125,6 +128,8 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.HasIndex("OrganizationId");
 
                     b.HasIndex("SalonId");
+
+                    b.HasIndex("VkUserId");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });

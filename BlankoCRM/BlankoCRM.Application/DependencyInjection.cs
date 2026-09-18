@@ -5,6 +5,7 @@ using AutoMapper;
 using Microsoft.Extensions.DependencyInjection;
 using FluentValidation;
 using System.Reflection;
+using BlankoCRM.Core.Interfaces;
 
 namespace BlankoCRM.Application;
 
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IAppointmentService, AppointmentService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IScheduleService, ScheduleService>();
+        services.AddScoped<IVkSignatureValidator, VkSignatureValidator>();
 
         return services;
     }

@@ -75,4 +75,28 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
     }
+
+    /// <summary>
+    /// Аутентификация через VK Mini App.
+    /// При первом входе автоматически регистрирует пользователя и организацию.
+    /// Является приоритетным API методом
+    /// </summary>
+    /// <param name="request">Параметры запуска VK Mini App.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <response code="200">Успешная аутентификация, возвращает JWT-токен.</response>
+    /// <response code="400">Некорректные параметры.</response>
+    /// <response code="401">Подпись VK недействительна.</response>
+    [HttpPost("vk-mini-app")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponse>> VkMiniAppAuth(
+        [FromBody] VkMiniAppAuthRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (token, name, email) = await _authService.AuthVkMiniAppAsync(
+            request.VkParams, cancellationToken);
+
+        return Ok(new AuthResponse(token, name, email));
+    }
 }

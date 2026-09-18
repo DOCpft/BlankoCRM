@@ -3,27 +3,31 @@ using BlankoCRM.Core.Entities;
 using BlankoCRM.Core.Interfaces;
 using BlankoCRM.Infrastructure;
 using BlankoCRM.Infrastructure.Data;
+using BlankoCRM.Web.Extensions;
 using BlankoCRM.Web.Middleware;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using FluentValidation.AspNetCore;
+using Prometheus;
+using Prometheus.SystemMetrics;
+using Serilog.Context;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseBlankoSerilog();
 
+builder.Services.AddSystemMetrics();
 // Add services to the container.
 //builder.Services.AddDbContext<AppDbContext>(options =>
 //    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .LogTo(Console.WriteLine, LogLevel.Information)
-           .EnableSensitiveDataLogging());
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IOrganizationContext, OrganizationContext>();
 builder.Services.AddInfrastructureRepositories();
@@ -134,18 +138,25 @@ using (var scope = app.Services.CreateScope())
     await dbContext.Database.MigrateAsync();
 }
 
-app.UseHttpsRedirection();
+app.UseMiddleware<CorrelationIdMiddleware>();
 
+if (!app.Environment.IsDevelopment()) // в проде nginx пришлет X-Forwarded-Proto: https, и этот редирект просто не сработает, что хорошо. А приложение внутри docker-сети слушает http. В dev среде же редирект в приложении сработает (самоподписанный TLS не катит для Prometheus). Трафик в интернет выходить не будет, поэтому использовать домен + Let's Encrypt не обязательно, лишняя заморочка для dev (хоть и в prod это будет, но не к чему заморачиваться). Проще говоря, не редиректим /metrics на https - оверхед.
+{
+    app.UseHttpsRedirection();
+}
+
+// Swagger размещён до request logging, чтобы не засорять прикладные логи.
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseStaticFiles();
 
-// Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ middleware РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё РёСЃРєР»СЋС‡РµРЅРёР№ (РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РґРѕ РѕСЃС‚Р°Р»СЊРЅС‹С… middleware)
+app.UseBlankoRequestLogging();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
 
 // Middleware: СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ OrganizationId РёР· JWT РґР»СЏ Р°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹С… Р·Р°РїСЂРѕСЃРѕРІ,
 // Рё СЃР±СЂР°СЃС‹РІР°РµС‚ (РѕС‡РёС‰Р°РµС‚) РґР»СЏ РЅРµР°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹С….
@@ -157,19 +168,31 @@ app.Use(async (context, next) =>
     var organizationContext = context.RequestServices.GetRequiredService<IOrganizationContext>();
     organizationContext.Clear();
 
+    Guid? currentOrganizationId = null;
     if (context.User.Identity?.IsAuthenticated == true)
     {
         var organizationIdClaim = context.User.FindFirst("organizationId")?.Value;
 
         if (Guid.TryParse(organizationIdClaim, out var organizationId))
         {
+            currentOrganizationId = organizationId;
             organizationContext.SetCurrentOrganizationId(organizationId);
         }
     }
 
     try
     {
-        await next();
+        if (currentOrganizationId.HasValue)
+        {
+            using (LogContext.PushProperty("OrganizationId", currentOrganizationId.Value))
+            {
+                await next();
+            }
+        }
+        else
+        {
+            await next();
+        }
     }
     finally
     {
@@ -177,6 +200,8 @@ app.Use(async (context, next) =>
     }
 });
 
+app.UseHttpMetrics();   // Собирает метрики по HTTP-запросам
+app.MapMetrics();       // Открывает эндпоинт /metrics
 app.MapControllers();
 
 app.Run();

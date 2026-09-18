@@ -3,6 +3,7 @@ using BlankoCRM.Application.DTOs;
 using BlankoCRM.Core.Entities;
 using BlankoCRM.Core.Interfaces;
 using BlankoCRM.Core.Exceptions;
+using Microsoft.Extensions.Logging;
 using System.Linq;
 
 namespace BlankoCRM.Application.Services;
@@ -19,6 +20,7 @@ public class AppointmentService : IAppointmentService
     private readonly IScheduleRepository _scheduleRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOrganizationContext _organizationContext;
+    private readonly ILogger<AppointmentService> _logger;
 
     public AppointmentService(
         IAppointmentRepository appointmentRepository,
@@ -27,7 +29,8 @@ public class AppointmentService : IAppointmentService
         IRepository<Salon> salonRepository,
         IScheduleRepository scheduleRepository,
         IUnitOfWork unitOfWork,
-        IOrganizationContext organizationContext)
+        IOrganizationContext organizationContext,
+        ILogger<AppointmentService> logger)
     {
         _appointmentRepository = appointmentRepository;
         _clientRepository = clientRepository;
@@ -36,6 +39,7 @@ public class AppointmentService : IAppointmentService
         _scheduleRepository = scheduleRepository;
         _unitOfWork = unitOfWork;
         _organizationContext = organizationContext;
+        _logger = logger;
     }
 
     public async Task<Appointment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -122,6 +126,9 @@ public class AppointmentService : IAppointmentService
 
         if (await _scheduleRepository.HasOverlapWithOccupiedSlotsAsync(startTime, end, organizationId, salonId))
         {
+            _logger.LogWarning(
+                "Appointment conflict: interval {Start}-{End}, organization {OrganizationId}",
+                startTime, end, organizationId);
             throw new ConflictException($"Время записи {startTime:g} - {end:g} уже занято.");
         }
 
@@ -161,6 +168,10 @@ public class AppointmentService : IAppointmentService
             startTime, end, organizationId, salonId, cancellationToken: cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Appointment {AppointmentId} created for client {ClientId} at {StartTime}",
+            appointment.Id, appointment.ClientId, appointment.StartTime);
 
         return (appointment, schedule);
     }
@@ -291,6 +302,8 @@ public class AppointmentService : IAppointmentService
         appointment.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        _logger.LogInformation("Appointment {AppointmentId} archived", appointment.Id);
     }
 
     public Task CancelAsync(Guid id, CancellationToken cancellationToken = default)
@@ -317,6 +330,10 @@ public class AppointmentService : IAppointmentService
         }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Appointment {AppointmentId} status changed to {Status}",
+            appointment.Id, status);
     }
 }
 

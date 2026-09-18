@@ -30,24 +30,24 @@ public class ExceptionHandlingMiddleware
         }
         catch (DomainException ex)
         {
-            _logger.LogWarning(ex, "Domain error occurred");
+            _logger.LogWarning(ex,
+                "Domain error {ErrorType}: {Message}",
+                ex.GetType().Name, ex.Message);
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = ex.StatusCode;
             await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = ex.Message }));
         }
         catch (UnauthorizedAccessException ex)
         {
+            _logger.LogWarning(ex, "Unauthorized access attempt");
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = ex.Message }));
         }
         catch (DbUpdateException ex)
         {
-            // РћС€РёР±РєРё Р±Р°Р·С‹ РґР°РЅРЅС‹С… (РЅР°СЂСѓС€РµРЅРёРµ СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚Рё, РІРЅРµС€РЅРёРµ РєР»СЋС‡Рё Рё С‚.Рґ.)
-            _logger.LogError(ex, "Database error occurred");
-            _logger.LogError(
-                "Database error details. InnerException: {InnerException}",
-                ex.InnerException?.ToString() ?? "<none>");
+            var sqlState = (ex.InnerException as PostgresException)?.SqlState;
+            _logger.LogError(ex, "Database error. SqlState: {SqlState}", sqlState);
 
             context.Response.ContentType = "application/json";
             var postgresException = ex.InnerException as PostgresException;

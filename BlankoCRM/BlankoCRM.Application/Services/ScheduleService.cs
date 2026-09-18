@@ -3,6 +3,7 @@ using BlankoCRM.Application.DTOs;
 using BlankoCRM.Core.Entities;
 using BlankoCRM.Core.Exceptions;
 using BlankoCRM.Core.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace BlankoCRM.Application.Services;
 
@@ -12,17 +13,20 @@ public class ScheduleService : IScheduleService
     private readonly IAppointmentService _appointmentService;
     private readonly IOrganizationContext _organizationContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<ScheduleService> _logger;
 
     public ScheduleService(
         IScheduleRepository scheduleRepository,
         IAppointmentService appointmentService,
         IOrganizationContext organizationContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<ScheduleService> logger)
     {
         _scheduleRepository = scheduleRepository;
         _appointmentService = appointmentService;
         _organizationContext = organizationContext;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<Schedule> AddFreeSlotAsync(CreateFreeSlotRequest request, CancellationToken cancellationToken = default)
@@ -31,6 +35,9 @@ public class ScheduleService : IScheduleService
         if (await _scheduleRepository.HasOverlapAsync(
             request.StartTime, request.EndTime, organizationId, request.SalonId))
         {
+            _logger.LogWarning(
+                "Free slot conflict: interval {Start}-{End}, organization {OrganizationId}",
+                request.StartTime, request.EndTime, organizationId);
             throw new ConflictException("Указанный интервал уже занят другим слотом.");
         }
 
@@ -98,6 +105,7 @@ public class ScheduleService : IScheduleService
         _unitOfWork.Remove(slot);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        _logger.LogInformation("Schedule slot {SlotId} removed", slot.Id);
         return true;
     }
 
@@ -134,6 +142,9 @@ public class ScheduleService : IScheduleService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        _logger.LogInformation(
+            "Schedule slots removed: requested {RequestedCount}, removed {RemovedCount}",
+            selectedSlots.Count, slots.Count);
         return slots.Count;
     }
 
