@@ -26,10 +26,11 @@ builder.Services.AddSystemMetrics();
 // Add services to the container.
 //builder.Services.AddDbContext<AppDbContext>(options =>
 //    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<IOrganizationContext, OrganizationContext>();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddScoped<IOrganizationContext, OrganizationContext>();
 builder.Services.AddInfrastructureRepositories();
 
 builder.Services

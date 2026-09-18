@@ -9,8 +9,18 @@ namespace BlankoCRM.Infrastructure.Data;
 
 public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    private readonly IOrganizationContext _organizationContext;
+
+    /// <summary>
+    /// ID текущей организации для глобального фильтра.
+    /// Читается из IOrganizationContext для каждого экземпляра DbContext.
+    /// </summary>
+    public Guid? CurrentOrganizationId => _organizationContext.GetCurrentOrganizationId();
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        IOrganizationContext organizationContext) : base(options)
     {
+        _organizationContext = organizationContext;
     }
 
     public DbSet<Organization> Organizations { get; set; }
@@ -27,6 +37,10 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
     {
         base.OnModelCreating(modelBuilder);
 
+        var dbContextConstant = Expression.Constant(this);
+        var currentOrgIdProperty = Expression.Property(
+            dbContextConstant,
+            nameof(CurrentOrganizationId));
         // Глобальный фильтр для всех сущностей с OrganizationId.
         // Фильтр применяется ТОЛЬКО если OrganizationContext.CurrentOrganizationId не null.
         // Это защищает неавторизованные запросы (регистрация, логин) от некорректной фильтрации.
@@ -39,9 +53,12 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
             // СТАТИЧЕСКОЕ СВОЙСТВО — без захвата экземпляра
             var currentOrganizationId = Expression.Property(null, typeof(OrganizationContext), nameof(OrganizationContext.CurrentOrganizationId));
 
-            var hasValue = Expression.Property(currentOrganizationId, "HasValue");
-            var value = Expression.Property(currentOrganizationId, "Value");
+            var hasValue = Expression.Property(currentOrgIdProperty, nameof(Nullable<Guid>.HasValue));
+            // this.CurrentOrganizationId.Value
+            var value = Expression.Property(currentOrgIdProperty, nameof(Nullable<Guid>.Value));
+            // e.OrganizationId == this.CurrentOrganizationId.Value
             var comparison = Expression.Equal(organizationIdProperty, value);
+            // this.CurrentOrganizationId.HasValue && (e.OrganizationId == this.CurrentOrganizationId.Value)
             var andAlso = Expression.AndAlso(hasValue, comparison);
 
             var lambda = Expression.Lambda(andAlso, parameter);
