@@ -259,16 +259,11 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Phone")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
                     b.Property<Guid?>("SalonId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Telegram")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -281,12 +276,47 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasIndex("SalonId");
 
-                    b.HasIndex("Telegram");
-
                     b.HasIndex("OrganizationId", "Phone")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"Phone\" IS NOT NULL");
 
                     b.ToTable("Clients");
+                });
+
+            modelBuilder.Entity("BlankoCRM.Core.Entities.ClientContact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("ClientId", "Type")
+                        .IsUnique();
+
+                    b.ToTable("ClientContacts");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.MasterProfile", b =>
@@ -664,6 +694,25 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Navigation("Salon");
                 });
 
+            modelBuilder.Entity("BlankoCRM.Core.Entities.ClientContact", b =>
+                {
+                    b.HasOne("BlankoCRM.Core.Entities.Client", "Client")
+                        .WithMany("Contacts")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BlankoCRM.Core.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("BlankoCRM.Core.Entities.MasterProfile", b =>
                 {
                     b.HasOne("BlankoCRM.Core.Entities.Organization", "Organization")
@@ -809,6 +858,8 @@ namespace BlankoCRM.Infrastructure.Migrations
             modelBuilder.Entity("BlankoCRM.Core.Entities.Client", b =>
                 {
                     b.Navigation("Appointments");
+
+                    b.Navigation("Contacts");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Organization", b =>

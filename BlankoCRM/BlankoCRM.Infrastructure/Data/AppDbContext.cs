@@ -25,6 +25,7 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
 
     public DbSet<Organization> Organizations { get; set; }
     public DbSet<Client> Clients { get; set; }
+    public DbSet<ClientContact> ClientContacts { get; set; }
     public DbSet<Service> Services { get; set; }
     public DbSet<Appointment> Appointments { get; set; }
     public DbSet<AppointmentService> AppointmentServices { get; set; }
@@ -68,6 +69,7 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
         // Настройка таблиц, связей, индексов
         ConfigureOrganization(modelBuilder);
         ConfigureClient(modelBuilder);
+        ConfigureClientContact(modelBuilder);
         ConfigureService(modelBuilder);
         ConfigureAppointment(modelBuilder);
         ConfigureAppointmentService(modelBuilder);
@@ -90,22 +92,44 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
         {
             entity.HasKey(c => c.Id);
             entity.Property(c => c.Name).IsRequired().HasMaxLength(200);
-            entity.Property(c => c.Phone).IsRequired().HasMaxLength(20);
-            entity.Property(c => c.Telegram).HasMaxLength(100);
+            entity.Property(c => c.Phone).HasMaxLength(20);
 
             // Индексы для быстрого поиска
             entity.HasIndex(c => c.OrganizationId);
             entity.HasIndex(c => c.Phone);
-            entity.HasIndex(c => c.Telegram);
-
             // Составной уникальный индекс: телефон должен быть уникален в пределах одного мастера
-            entity.HasIndex(c => new { c.OrganizationId, c.Phone }).IsUnique();
+            entity.HasIndex(c => new { c.OrganizationId, c.Phone })
+                .IsUnique()
+                .HasFilter("\"Phone\" IS NOT NULL");
 
             // Связь с Organization
             entity.HasOne(c => c.Organization)
                 .WithMany(t => t.Clients)
                 .HasForeignKey(c => c.OrganizationId)
                 .OnDelete(DeleteBehavior.Cascade); // При удалении мастера удаляются его клиенты
+        });
+    }
+
+    private void ConfigureClientContact(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ClientContact>(entity =>
+        {
+            entity.HasKey(contact => contact.Id);
+            entity.Property(contact => contact.Value).IsRequired().HasMaxLength(200);
+            entity.Property(contact => contact.Type).HasConversion<int>();
+
+            entity.HasIndex(contact => contact.OrganizationId);
+            entity.HasIndex(contact => new { contact.ClientId, contact.Type }).IsUnique();
+
+            entity.HasOne(contact => contact.Client)
+                .WithMany(client => client.Contacts)
+                .HasForeignKey(contact => contact.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(contact => contact.Organization)
+                .WithMany()
+                .HasForeignKey(contact => contact.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

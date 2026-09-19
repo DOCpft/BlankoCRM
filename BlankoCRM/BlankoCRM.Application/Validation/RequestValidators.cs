@@ -28,8 +28,12 @@ public sealed class CreateClientRequestValidator : AbstractValidator<CreateClien
     public CreateClientRequestValidator()
     {
         RuleFor(request => request.Name).NotEmpty().MaximumLength(200);
-        RuleFor(request => request.Phone).NotEmpty().MaximumLength(20);
-        RuleFor(request => request.Telegram).MaximumLength(100);
+        RuleFor(request => request.Phone).MaximumLength(20).When(request => request.Phone is not null);
+        RuleFor(request => request.Contacts)
+            .Must(contacts => contacts.Select(contact => contact.Type).Distinct().Count() == contacts.Count)
+            .When(request => request.Contacts is not null)
+            .WithMessage("Типы контактов не должны повторяться.");
+        RuleForEach(request => request.Contacts).SetValidator(new ClientContactDtoValidator());
         RuleFor(request => request.Notes).MaximumLength(500);
     }
 }
@@ -39,9 +43,23 @@ public sealed class UpdateClientRequestValidator : AbstractValidator<UpdateClien
     public UpdateClientRequestValidator()
     {
         RuleFor(request => request.Name).MaximumLength(200);
-        RuleFor(request => request.Phone).MaximumLength(20);
-        RuleFor(request => request.Telegram).MaximumLength(100);
+        RuleFor(request => request.Phone).MaximumLength(20).When(request => request.Phone is not null);
+        RuleFor(request => request.Contacts)
+            .Must(contacts => contacts.Select(contact => contact.Type).Distinct().Count() == contacts.Count)
+            .When(request => request.Contacts is not null)
+            .WithMessage("Типы контактов не должны повторяться.");
+        RuleForEach(request => request.Contacts).SetValidator(new ClientContactDtoValidator());
         RuleFor(request => request.Notes).MaximumLength(500);
+    }
+}
+
+public sealed class ClientContactDtoValidator : AbstractValidator<ClientContactDto>
+{
+    public ClientContactDtoValidator()
+    {
+        RuleFor(contact => contact.Value)
+            .NotEmpty()
+            .MaximumLength(200);
     }
 }
 

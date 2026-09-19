@@ -12,6 +12,7 @@ public sealed class AutoMapperProfile : Profile
     public AutoMapperProfile()
     {
         CreateMap<Client, ClientDto>();
+        CreateMap<ClientContact, ClientContactDto>();
         CreateMap<Service, ServiceDto>();
         CreateMap<AppointmentService, AppointmentServiceDto>();
         CreateMap<Appointment, AppointmentDto>()

@@ -16,8 +16,7 @@ namespace BlankoCRM.Core.Entities
         public Guid OrganizationId { get; set; }          // Привязка к мастеру (мультитенантность)
         public Guid? SalonId { get; set; }
         public string Name { get; set; }             // Имя клиента
-        public string Phone { get; set; }            // Телефон (для связи и напоминаний)
-        public string? Telegram { get; set; }           // Опционально
+        public string? Phone { get; set; }           // Телефон (для связи и напоминаний)
         public DateTime? BirthDate { get; set; }    // Для персональных предложений
         public string? Notes { get; set; }           // Заметки мастера (аллергии, предпочтения)
         public DateTime CreatedAt { get; set; }
@@ -26,7 +25,8 @@ namespace BlankoCRM.Core.Entities
         // Навигационное свойство (не обязательно, но удобно)
         public Organization Organization { get; set; }
         public Salon? Salon { get; set; }
-        public ICollection<Appointment> Appointments { get; set; }
+        public ICollection<Appointment> Appointments { get; set; } = [];
+        public ICollection<ClientContact> Contacts { get; set; } = [];
     }
 }
 

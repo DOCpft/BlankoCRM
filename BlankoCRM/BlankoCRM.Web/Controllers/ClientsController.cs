@@ -74,7 +74,7 @@ public class ClientsController : ControllerBase
         var client = await _clientService.CreateAsync(
             request.Name,
             request.Phone,
-            request.Telegram,
+            request.Contacts,
             request.BirthDate,
             request.Notes,
             request.SalonId);
@@ -102,7 +102,7 @@ public class ClientsController : ControllerBase
             id,
             request.Name,
             request.Phone,
-            request.Telegram,
+            request.Contacts,
             request.BirthDate,
             request.Notes,
             request.SalonId);
