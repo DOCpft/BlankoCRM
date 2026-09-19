@@ -10,7 +10,7 @@ using BlankoCRM.Core.Interfaces;
 namespace BlankoCRM.Application;
 
 /// <summary>
-/// Р РµРіРёСЃС‚СЂР°С†РёСЏ СЃРµСЂРІРёСЃРѕРІ СЃР»РѕСЏ Application РІ DI-РєРѕРЅС‚РµР№РЅРµСЂРµ.
+/// Регистрация сервисов слоя Application в DI-контейнере.
 /// </summary>
 public static class DependencyInjection
 {

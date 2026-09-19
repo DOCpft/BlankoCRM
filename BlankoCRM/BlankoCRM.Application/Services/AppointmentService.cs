@@ -67,7 +67,12 @@ public class AppointmentService : IAppointmentService
         CancellationToken cancellationToken = default)
     {
         var result = await CreateWithScheduleAsync(
-            clientId, serviceInputs, startTime, notes, salonId, cancellationToken);
+            clientId,
+            serviceInputs,
+            startTime,
+            notes,
+            salonId,
+            cancellationToken: cancellationToken);
         return result.Appointment;
     }
 
@@ -77,6 +82,7 @@ public class AppointmentService : IAppointmentService
         DateTime startTime,
         string? notes = null,
         Guid? salonId = null,
+        DateTime? endTime = null,
         CancellationToken cancellationToken = default)
     {
         // 1. РџСЂРѕРІРµСЂСЏРµРј РєР»РёРµРЅС‚Р°
@@ -115,13 +121,17 @@ public class AppointmentService : IAppointmentService
                 Price = price,
                 DurationMinutes = duration,
                 ServiceName = service.Name,
-                Quantity = input.Quantity > 0 ? input.Quantity : 1
+                Quantity = input.Quantity ?? 1
             });
         }
 
         // 5. Р Р°СЃСЃС‡РёС‚С‹РІР°РµРј РѕР±С‰СѓСЋ РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ (СЃСѓРјРјР° РІСЃРµС… РґР»РёС‚РµР»СЊРЅРѕСЃС‚РµР№)
-        var totalDuration = appointmentServices.Sum(s => s.DurationMinutes * s.Quantity);
-        var end = startTime.AddMinutes(totalDuration);
+        var end = endTime ?? startTime.AddMinutes(
+            appointmentServices.Sum(service => service.DurationMinutes * service.Quantity));
+        if (end <= startTime)
+        {
+            throw new ValidationException("Время окончания должно быть позже времени начала.");
+        }
         var organizationId = _organizationContext.GetCurrentOrganizationId()!.Value;
 
         if (await _scheduleRepository.HasOverlapWithOccupiedSlotsAsync(startTime, end, organizationId, salonId))
@@ -227,7 +237,7 @@ public class AppointmentService : IAppointmentService
                     Price = input.Price ?? service.Price,
                     DurationMinutes = input.DurationMinutes ?? service.DurationMinutes,
                     ServiceName = service.Name,
-                    Quantity = input.Quantity > 0 ? input.Quantity : 1
+                    Quantity = input.Quantity ?? 1
                 });
             }
         }

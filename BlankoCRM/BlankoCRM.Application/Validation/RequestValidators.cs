@@ -74,8 +74,39 @@ public sealed class ServiceInputValidator : AbstractValidator<ServiceInput>
         RuleFor(input => input.ServiceId).NotEmpty();
         RuleFor(input => input.DurationMinutes).InclusiveBetween(1, 1440).When(input => input.DurationMinutes.HasValue);
         RuleFor(input => input.Price).GreaterThanOrEqualTo(0).When(input => input.Price.HasValue);
-        RuleFor(input => input.Quantity).GreaterThan(0);
+        RuleFor(input => input.Quantity)
+            .GreaterThan(0)
+            .When(input => input.Quantity.HasValue);
     }
+
+public sealed class CreateOccupiedSlotAppointmentDataValidator
+    : AbstractValidator<CreateOccupiedSlotAppointmentData>
+{
+    public CreateOccupiedSlotAppointmentDataValidator(IValidator<ServiceInput> serviceInputValidator)
+    {
+        RuleFor(request => request.ClientId).NotEmpty();
+        RuleFor(request => request.Services)
+            .NotEmpty()
+            .SetValidator(new ServiceInputCollectionValidator(serviceInputValidator));
+        RuleFor(request => request.Notes).MaximumLength(500);
+    }
+}
+
+public sealed class CreateOccupiedSlotRequestValidator : AbstractValidator<CreateOccupiedSlotRequest>
+{
+    public CreateOccupiedSlotRequestValidator(
+        IValidator<CreateOccupiedSlotAppointmentData> appointmentDataValidator)
+    {
+        RuleFor(request => request.StartTime).NotEmpty();
+        RuleFor(request => request.EndTime)
+            .GreaterThan(request => request.StartTime)
+            .When(request => request.EndTime.HasValue)
+            .WithMessage("Время окончания должно быть позже времени начала.");
+        RuleFor(request => request.AppointmentData)
+            .NotNull()
+            .SetValidator(appointmentDataValidator);
+    }
+}
 }
 
 public sealed class CreateAppointmentRequestValidator : AbstractValidator<CreateAppointmentRequest>

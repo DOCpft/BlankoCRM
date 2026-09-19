@@ -62,6 +62,7 @@ public class ScheduleService : IScheduleService
             request.StartTime,
             request.AppointmentData.Notes,
             request.AppointmentData.SalonId,
+            request.EndTime,
             cancellationToken);
 
         return result.Schedule;

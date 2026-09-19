@@ -34,6 +34,7 @@ namespace BlankoCRM.Application.Abstract
             DateTime startTime,
             string? notes = null,
             Guid? salonId = null,
+            DateTime? endTime = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>

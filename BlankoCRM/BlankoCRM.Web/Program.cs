@@ -5,6 +5,7 @@ using BlankoCRM.Infrastructure;
 using BlankoCRM.Infrastructure.Data;
 using BlankoCRM.Web.Extensions;
 using BlankoCRM.Web.Middleware;
+using BlankoCRM.Web.Swagger;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -40,7 +41,7 @@ builder.Services
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
-// Р РµРіРёСЃС‚СЂРёСЂСѓРµРј СЃРµСЂРІРёСЃС‹ СЃР»РѕСЏ Application
+// Регистрируем сервисы слоя Application
 builder.Services.AddApplicationServices();
 
 // JWT configuration
@@ -71,6 +72,8 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
+    c.SchemaFilter<RequiredPropertiesSchemaFilter>();
+
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "BlankoCRM API",
@@ -107,7 +110,7 @@ builder.Services.AddSwaggerGen(c =>
     var jwtSecurityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Р’РІРµРґРёС‚Рµ С‚РѕРєРµРЅ РІ С„РѕСЂРјР°С‚Рµ: Bearer {token}",
+        Description = "Введите токен в формате: Bearer {token}",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
@@ -116,7 +119,7 @@ builder.Services.AddSwaggerGen(c =>
 
     c.AddSecurityDefinition("Bearer", jwtSecurityScheme);
 
-    // Р”РѕР±Р°РІР»СЏРµРј SecurityRequirement, С‡С‚РѕР±С‹ Swagger UI РїСЂРёРјРµРЅСЏР» С‚РѕРєРµРЅ РєРѕ РІСЃРµРј СЌРЅРґРїРѕРёРЅС‚Р°Рј
+    // Добавляем SecurityRequirement, чтобы Swagger UI применял токен ко всем эндпоинтам
     c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
@@ -132,7 +135,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// РџСЂРёРјРµРЅСЏРµРј РјРёРіСЂР°С†РёРё (РґР»СЏ СЂР°Р·СЂР°Р±РѕС‚РєРё)
+// Применяем миграции (для разработки)
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -159,13 +162,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
-// Middleware: СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ OrganizationId РёР· JWT РґР»СЏ Р°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹С… Р·Р°РїСЂРѕСЃРѕРІ,
-// Рё СЃР±СЂР°СЃС‹РІР°РµС‚ (РѕС‡РёС‰Р°РµС‚) РґР»СЏ РЅРµР°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹С….
-// Р­С‚Рѕ РєСЂРёС‚РёС‡РµСЃРєРё РІР°Р¶РЅРѕ, С‡С‚РѕР±С‹ РіР»РѕР±Р°Р»СЊРЅС‹Рµ Query Filters РЅРµ РїСЂРёРјРµРЅСЏР»РёСЃСЊ
-// Рє РЅРµР°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹Рј Р·Р°РїСЂРѕСЃР°Рј (СЂРµРіРёСЃС‚СЂР°С†РёСЏ, Р»РѕРіРёРЅ).
+// Middleware устанавливает OrganizationId из JWT для авторизованных запросов
+// и сбрасывает его для неавторизованных.
+// Это критически важно, чтобы глобальные Query Filters не применялись
+// к неавторизованным запросам (регистрация, логин).
 app.Use(async (context, next) =>
 {
-    // РЎР±СЂР°СЃС‹РІР°РµРј OrganizationId РІ РЅР°С‡Р°Р»Рµ РєР°Р¶РґРѕРіРѕ Р·Р°РїСЂРѕСЃР°
+    // Сбрасываем OrganizationId в начале каждого запроса
     var organizationContext = context.RequestServices.GetRequiredService<IOrganizationContext>();
     organizationContext.Clear();
 

@@ -32,12 +32,19 @@ namespace BlankoCRM.Application.DTOs
     /// Запрос на создание занятого слота.
     /// </summary>
     /// <param name="StartTime">Время начала слота.</param>
-    /// <param name="EndTime">Время окончания слота.</param>
-    /// <param name="AppointmentData">Данные связанной записи на приём.</param>
+    /// <param name="EndTime">Время окончания слота (необязательно).</param>
+    /// <param name="AppointmentData">Данные связанной записи на приём без времени.</param>
     public record CreateOccupiedSlotRequest(
         DateTime StartTime,
-        DateTime EndTime,
-        CreateAppointmentRequest AppointmentData
+        CreateOccupiedSlotAppointmentData AppointmentData,
+        DateTime? EndTime = null
+    );
+
+    public record CreateOccupiedSlotAppointmentData(
+        Guid ClientId,
+        List<ServiceInput> Services,
+        string? Notes = null,
+        Guid? SalonId = null
     );
 
     /// <summary>

@@ -74,12 +74,12 @@ namespace BlankoCRM.Application.DTOs
     /// <param name="ServiceId">Идентификатор услуги.</param>
     /// <param name="DurationMinutes">Переопределённая длительность в минутах (необязательно).</param>
     /// <param name="Price">Переопределённая цена (необязательно).</param>
-    /// <param name="Quantity">Количество (по умолчанию 1).</param>
+    /// <param name="Quantity">Количество (необязательно, по умолчанию 1).</param>
     public record ServiceInput(
         Guid ServiceId,
         int? DurationMinutes = null,
         decimal? Price = null,
-        int Quantity = 1
+        int? Quantity = null
     );
 
     /// <summary>
