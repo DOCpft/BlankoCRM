@@ -31,7 +31,7 @@ public sealed class ScheduleRepository : EfRepository<Schedule>, IScheduleReposi
             .AsNoTracking()
             .Include(schedule => schedule.Appointment)
             .ThenInclude(appointment => appointment!.AppointmentServices)
-            .Where(schedule => schedule.StartTime >= dateFrom && schedule.StartTime <= dateTo)
+            .Where(schedule => schedule.StartTime <= dateTo && schedule.EndTime > dateFrom)
             .OrderBy(schedule => schedule.StartTime)
             .ToListAsync(cancellationToken);
     }
