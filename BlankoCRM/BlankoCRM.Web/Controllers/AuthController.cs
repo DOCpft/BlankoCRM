@@ -31,20 +31,8 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterUserRequest request)
     {
-        if (!ModelState.IsValid)
-        {
-            return ValidationProblem(ModelState);
-        }
-
-        try
-        {
-            await _authService.RegisterAsync(request.Name, request.Email, request.Password, request.OrganizationName);
-            return StatusCode(StatusCodes.Status201Created);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ex.Message);
-        }
+        await _authService.RegisterAsync(request.Name, request.Email, request.Password, request.OrganizationName);
+        return StatusCode(StatusCodes.Status201Created);
     }
 
     /// <summary>
@@ -60,20 +48,8 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginUserRequest request)
     {
-        if (!ModelState.IsValid)
-        {
-            return ValidationProblem(ModelState);
-        }
-
-        try
-        {
-            var (token, name, email) = await _authService.LoginAsync(request.Email, request.Password);
-            return Ok(new AuthResponse(token, name, email));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized();
-        }
+        var (token, name, email) = await _authService.LoginAsync(request.Email, request.Password);
+        return Ok(new AuthResponse(token, name, email));
     }
 
     /// <summary>

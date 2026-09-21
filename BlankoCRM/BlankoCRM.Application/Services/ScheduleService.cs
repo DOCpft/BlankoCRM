@@ -33,12 +33,20 @@ public class ScheduleService : IScheduleService
     {
         var organizationId = GetOrganizationId();
         if (await _scheduleRepository.HasOverlapAsync(
-            request.StartTime, request.EndTime, organizationId, request.SalonId))
+            request.StartTime, request.EndTime, organizationId, request.SalonId, cancellationToken: cancellationToken))
         {
             _logger.LogWarning(
                 "Free slot conflict: interval {Start}-{End}, organization {OrganizationId}",
                 request.StartTime, request.EndTime, organizationId);
             throw new ConflictException("Указанный интервал уже занят другим слотом.");
+        }
+
+        if (request.EndTime <= request.StartTime)
+        {
+            _logger.LogWarning(
+                "Invalid time range: {Start}-{End}, organization {OrganizationId}",
+                request.StartTime, request.EndTime, organizationId);
+            throw new ArgumentException("Конечное время не может быть раньше начального времени.");
         }
 
         var slot = new Schedule
@@ -51,7 +59,7 @@ public class ScheduleService : IScheduleService
             CreatedAt = DateTime.UtcNow
         };
 
-        return await _scheduleRepository.AddAsync(slot);
+        return await _scheduleRepository.AddAsync(slot, cancellationToken);
     }
 
     public async Task<Schedule> AddOccupiedSlotAsync(CreateOccupiedSlotRequest request, CancellationToken cancellationToken = default)
@@ -161,7 +169,7 @@ public class ScheduleService : IScheduleService
             if (slot.Appointment is null)
             {
                 if (await _scheduleRepository.HasOverlapAsync(
-                    startTime, endTime, organizationId, slot.SalonId, slot.Id))
+                    startTime, endTime, organizationId, slot.SalonId, slot.Id, cancellationToken))
                 {
                     throw new ConflictException("Указанный интервал уже занят другим слотом.");
                 }
