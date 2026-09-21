@@ -129,7 +129,9 @@ namespace BlankoCRM.Infrastructure.Migrations
 
                     b.HasIndex("SalonId");
 
-                    b.HasIndex("VkUserId");
+                    b.HasIndex("VkUserId")
+                        .IsUnique()
+                        .HasFilter("\"VkUserId\" IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
