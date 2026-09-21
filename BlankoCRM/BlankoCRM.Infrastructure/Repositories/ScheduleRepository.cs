@@ -18,7 +18,9 @@ public sealed class ScheduleRepository : EfRepository<Schedule>, IScheduleReposi
     {
         return await DbContext.Schedules
             .Include(schedule => schedule.Appointment)
-            .ThenInclude(appointment => appointment!.AppointmentServices)
+                .ThenInclude(appointment => appointment!.AppointmentServices)
+            .Include(schedule => schedule.Appointment)
+                .ThenInclude(client => client!.Client)
             .FirstOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
     }
 
@@ -30,7 +32,9 @@ public sealed class ScheduleRepository : EfRepository<Schedule>, IScheduleReposi
         return await DbContext.Schedules
             .AsNoTracking()
             .Include(schedule => schedule.Appointment)
-            .ThenInclude(appointment => appointment!.AppointmentServices)
+                .ThenInclude(appointment => appointment!.AppointmentServices)
+            .Include(schedule => schedule.Appointment)
+                .ThenInclude(client => client!.Client)
             .Where(schedule => schedule.StartTime <= dateTo && schedule.EndTime > dateFrom)
             .OrderBy(schedule => schedule.StartTime)
             .ToListAsync(cancellationToken);
