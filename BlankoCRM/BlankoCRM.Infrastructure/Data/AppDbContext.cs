@@ -51,15 +51,9 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
             var parameter = Expression.Parameter(entityType.ClrType, "e");
             var organizationIdProperty = Expression.Property(parameter, nameof(IOrganizationEntity.OrganizationId));
 
-            // СТАТИЧЕСКОЕ СВОЙСТВО — без захвата экземпляра
-            var currentOrganizationId = Expression.Property(null, typeof(OrganizationContext), nameof(OrganizationContext.CurrentOrganizationId));
-
             var hasValue = Expression.Property(currentOrgIdProperty, nameof(Nullable<Guid>.HasValue));
-            // this.CurrentOrganizationId.Value
             var value = Expression.Property(currentOrgIdProperty, nameof(Nullable<Guid>.Value));
-            // e.OrganizationId == this.CurrentOrganizationId.Value
             var comparison = Expression.Equal(organizationIdProperty, value);
-            // this.CurrentOrganizationId.HasValue && (e.OrganizationId == this.CurrentOrganizationId.Value)
             var andAlso = Expression.AndAlso(hasValue, comparison);
 
             var lambda = Expression.Lambda(andAlso, parameter);
