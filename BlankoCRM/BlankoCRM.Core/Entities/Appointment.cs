@@ -37,8 +37,8 @@ namespace BlankoCRM.Core.Entities
         // Если AppointmentServices не загружены (через .Include()), значения будут 0.
         // Для надёжности используйте эти поля ТОЛЬКО в DTO после загрузки связанных данных,
         // либо храните их как отдельные столбцы в БД (если производительность критична).
-        public decimal TotalPrice => AppointmentServices?.Sum(aps => aps.Price) ?? 0;
-        public decimal TotalDuration => AppointmentServices?.Sum(aps => aps.DurationMinutes) ?? 0;
+        public decimal TotalPrice => AppointmentServices?.Sum(aps => aps.Price * aps.Quantity) ?? 0;
+        public decimal TotalDuration => AppointmentServices?.Sum(aps => aps.DurationMinutes * aps.Quantity) ?? 0;
 
     }
 
