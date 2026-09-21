@@ -1,25 +1,29 @@
 ﻿using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Core.Entities;
-using BlankoCRM.Core.Interfaces;
 using BlankoCRM.Core.Exceptions;
+using BlankoCRM.Core.Interfaces;
+using BlankoCRM.Infrastructure.Repositories;
 
 namespace BlankoCRM.Application.Services;
 
 public class ClientService : IClientService
 {
     private readonly IClientRepository _clientRepository;
+    private readonly IAppointmentRepository _appointmentRepository;
     private readonly IRepository<Salon> _salonRepository;
     private readonly IOrganizationContext _organizationContext;
     private readonly IUnitOfWork _unitOfWork;
 
     public ClientService(
         IClientRepository clientRepository,
+        IAppointmentRepository appointmentRepository,
         IRepository<Salon> salonRepository,
         IOrganizationContext organizationContext,
         IUnitOfWork unitOfWork)
     {
         _clientRepository = clientRepository;
+        _appointmentRepository = appointmentRepository;
         _salonRepository = salonRepository;
         _organizationContext = organizationContext;
         _unitOfWork = unitOfWork;
@@ -121,6 +125,9 @@ public class ClientService : IClientService
     {
         var client = await _clientRepository.GetByIdAsync(id)
             ?? throw new NotFoundException($"Client with ID {id} was not found.");
+
+        if (await _appointmentRepository.ExistsAsync(a => a.ClientId == id))
+            throw new ConflictException("Нельзя удалить клиента с существующими записями.");
 
         await _clientRepository.DeleteAsync(client);
     }
