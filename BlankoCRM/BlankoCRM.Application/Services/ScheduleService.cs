@@ -1,3 +1,4 @@
+using System.Data;
 using BlankoCRM.Application.Abstract;
 using BlankoCRM.Application.DTOs;
 using BlankoCRM.Core.Entities;
@@ -32,34 +33,24 @@ public class ScheduleService : IScheduleService
     public async Task<Schedule> AddFreeSlotAsync(CreateFreeSlotRequest request, CancellationToken cancellationToken = default)
     {
         var organizationId = GetOrganizationId();
-        if (await _scheduleRepository.HasOverlapAsync(
-            request.StartTime, request.EndTime, organizationId, request.SalonId, cancellationToken: cancellationToken))
+        ValidateTimeRange(request);
+
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
+
+        await EnsureNoOverlapAsync(request, organizationId, cancellationToken);
+        var slot = CreateSlot(request, organizationId);
+        await _scheduleRepository.AddAsync(slot, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (ownsTransaction)
         {
-            _logger.LogWarning(
-                "Free slot conflict: interval {Start}-{End}, organization {OrganizationId}",
-                request.StartTime, request.EndTime, organizationId);
-            throw new ConflictException("Указанный интервал уже занят другим слотом.");
+            await transaction!.CommitAsync(cancellationToken);
         }
 
-        if (request.EndTime <= request.StartTime)
-        {
-            _logger.LogWarning(
-                "Invalid time range: {Start}-{End}, organization {OrganizationId}",
-                request.StartTime, request.EndTime, organizationId);
-            throw new ArgumentException("Конечное время не может быть раньше начального времени.");
-        }
-
-        var slot = new Schedule
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = organizationId,
-            SalonId = request.SalonId,
-            StartTime = request.StartTime,
-            EndTime = request.EndTime,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        return await _scheduleRepository.AddAsync(slot, cancellationToken);
+        return slot;
     }
 
     public async Task<Schedule> AddOccupiedSlotAsync(CreateOccupiedSlotRequest request, CancellationToken cancellationToken = default)
@@ -78,13 +69,134 @@ public class ScheduleService : IScheduleService
 
     public async Task<List<Schedule>> AddSlotsAsync(List<CreateFreeSlotRequest> addedSlots, CancellationToken cancellationToken = default)
     {
-        var slots = new List<Schedule>();
-        foreach (var request in addedSlots)
+        if (addedSlots.Count == 0)
         {
-            slots.Add(await AddFreeSlotAsync(request, cancellationToken));
+            return [];
         }
 
-        return slots;
+        var organizationId = GetOrganizationId();
+        if (_unitOfWork.HasActiveTransaction)
+        {
+            throw new InvalidOperationException(
+                "Batch-добавление слотов не поддерживается внутри внешней транзакции.");
+        }
+
+        var slots = addedSlots
+            .Select(request =>
+            {
+                ValidateTimeRange(request);
+                return CreateSlot(request, organizationId);
+            })
+            .ToList();
+
+        EnsureNoBatchOverlap(slots);
+
+        const int maxRetries = 3;
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                await using var transaction = await _unitOfWork.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    cancellationToken);
+
+                foreach (var slot in slots)
+                {
+                    if (await _scheduleRepository.HasOverlapAsync(
+                        slot.StartTime,
+                        slot.EndTime,
+                        organizationId,
+                        slot.SalonId,
+                        cancellationToken: cancellationToken))
+                    {
+                        _logger.LogWarning(
+                            "Free slot conflict: interval {Start}-{End}, organization {OrganizationId}",
+                            slot.StartTime,
+                            slot.EndTime,
+                            organizationId);
+                        throw new ConflictException("Указанный интервал уже занят другим слотом.");
+                    }
+                }
+
+                await _scheduleRepository.AddRangeAsync(slots, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return slots;
+            }
+            catch (Exception exception) when (_unitOfWork.IsSerializationFailure(exception))
+            {
+                _unitOfWork.ClearTracking();
+                if (attempt == maxRetries)
+                {
+                    throw new ConflictException(
+                        "Не удалось создать слоты из-за высокой конкуренции. Попробуйте ещё раз через пару секунд.");
+                }
+
+                await Task.Delay(Random.Shared.Next(10, 50), cancellationToken);
+            }
+        }
+
+        throw new InvalidOperationException("Batch-добавление слотов завершилось без результата.");
+    }
+
+    private async Task EnsureNoOverlapAsync(
+        CreateFreeSlotRequest request,
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        if (await _scheduleRepository.HasOverlapAsync(
+            request.StartTime,
+            request.EndTime,
+            organizationId,
+            request.SalonId,
+            cancellationToken: cancellationToken))
+        {
+            _logger.LogWarning(
+                "Free slot conflict: interval {Start}-{End}, organization {OrganizationId}",
+                request.StartTime,
+                request.EndTime,
+                organizationId);
+            throw new ConflictException("Указанный интервал уже занят другим слотом.");
+        }
+    }
+
+    private static Schedule CreateSlot(CreateFreeSlotRequest request, Guid organizationId)
+    {
+        return new Schedule
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = organizationId,
+            SalonId = request.SalonId,
+            StartTime = request.StartTime,
+            EndTime = request.EndTime,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static void ValidateTimeRange(CreateFreeSlotRequest request)
+    {
+        if (request.EndTime <= request.StartTime)
+        {
+            throw new ValidationException("Конечное время должно быть позже начального времени.");
+        }
+    }
+
+    private static void EnsureNoBatchOverlap(IReadOnlyList<Schedule> slots)
+    {
+        for (var i = 0; i < slots.Count; i++)
+        {
+            for (var j = i + 1; j < slots.Count; j++)
+            {
+                var first = slots[i];
+                var second = slots[j];
+                if (first.SalonId == second.SalonId
+                    && first.StartTime < second.EndTime
+                    && first.EndTime > second.StartTime)
+                {
+                    throw new ConflictException("Слоты внутри batch-запроса пересекаются.");
+                }
+            }
+        }
     }
 
     public async Task<List<Schedule>> GetScheduleByPeriodAsync(DateTime dateFrom, DateTime dateTo, CancellationToken cancellationToken = default)
@@ -101,7 +213,10 @@ public class ScheduleService : IScheduleService
     public async Task<bool> RemoveSlotAsync(Guid selectedSlot, CancellationToken cancellationToken = default)
     {
         var slot = await GetSlotByIdAsync(selectedSlot, cancellationToken);
-        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
 
         if (slot.Appointment is not null)
         {
@@ -113,7 +228,10 @@ public class ScheduleService : IScheduleService
 
         _unitOfWork.Remove(slot);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync(cancellationToken);
+        }
         _logger.LogInformation("Schedule slot {SlotId} removed", slot.Id);
         return true;
     }
@@ -135,7 +253,10 @@ public class ScheduleService : IScheduleService
             return 0;
         }
 
-        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
         foreach (var slot in slots)
         {
             if (slot.Appointment is not null)
@@ -150,7 +271,10 @@ public class ScheduleService : IScheduleService
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync(cancellationToken);
+        }
         _logger.LogInformation(
             "Schedule slots removed: requested {RequestedCount}, removed {RemovedCount}",
             selectedSlots.Count, slots.Count);
@@ -186,7 +310,10 @@ public class ScheduleService : IScheduleService
             throw new ValidationException("Нельзя обновить запись у свободного слота.");
         }
 
-        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
         if (request.StartTime.HasValue || request.EndTime.HasValue)
         {
             slot.StartTime = startTime;
@@ -218,7 +345,10 @@ public class ScheduleService : IScheduleService
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync(cancellationToken);
+        }
     }
 
     private Guid GetOrganizationId()

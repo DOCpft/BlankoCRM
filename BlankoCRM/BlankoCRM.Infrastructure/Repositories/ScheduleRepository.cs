@@ -108,9 +108,6 @@ public sealed class ScheduleRepository : EfRepository<Schedule>, IScheduleReposi
 
     public async Task AddRangeAsync(IEnumerable<Schedule> entities, CancellationToken cancellationToken = default)
     {
-        await using var transaction = await DbContext.Database.BeginTransactionAsync(cancellationToken);
         await DbContext.Schedules.AddRangeAsync(entities, cancellationToken);
-        await DbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
     }
 }

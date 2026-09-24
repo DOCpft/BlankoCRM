@@ -83,7 +83,19 @@ public class ClientService : IClientService
             contact.ClientId = client.Id;
         }
 
-        return await _clientRepository.AddAsync(client);
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync()
+            : null;
+
+        await _clientRepository.AddAsync(client);
+        await _unitOfWork.SaveChangesAsync();
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync();
+        }
+
+        return client;
     }
 
     public async Task UpdateAsync(
@@ -116,9 +128,16 @@ public class ClientService : IClientService
 
         client.UpdatedAt = DateTime.UtcNow;
 
-        await using var transaction = await _unitOfWork.BeginTransactionAsync();
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync()
+            : null;
+
         await _unitOfWork.SaveChangesAsync();
-        await transaction.CommitAsync();
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync();
+        }
     }
 
     public async Task DeleteAsync(Guid id)
@@ -129,7 +148,17 @@ public class ClientService : IClientService
         if (await _appointmentRepository.ExistsAsync(a => a.ClientId == id))
             throw new ConflictException("Нельзя удалить клиента с существующими записями.");
 
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync()
+            : null;
+
         await _clientRepository.DeleteAsync(client);
+        await _unitOfWork.SaveChangesAsync();
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync();
+        }
     }
 
     private void SynchronizeContacts(Client client, IReadOnlyCollection<ClientContactDto> requestedContacts)

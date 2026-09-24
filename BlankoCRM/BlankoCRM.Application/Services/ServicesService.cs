@@ -13,15 +13,18 @@ public class ServicesService : IServicesService
     private readonly IServiceRepository _serviceRepository;
     private readonly IRepository<Salon> _salonRepository;
     private readonly IOrganizationContext _organizationContext;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ServicesService(
         IServiceRepository serviceRepository,
         IRepository<Salon> salonRepository,
-        IOrganizationContext organizationContext)
+        IOrganizationContext organizationContext,
+        IUnitOfWork unitOfWork)
     {
         _serviceRepository = serviceRepository;
         _salonRepository = salonRepository;
         _organizationContext = organizationContext;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<List<Service>> GetAllAsync()
@@ -53,7 +56,19 @@ public class ServicesService : IServicesService
             CreatedAt = now
         };
 
-        return await _serviceRepository.AddAsync(service);
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync()
+            : null;
+
+        await _serviceRepository.AddAsync(service);
+        await _unitOfWork.SaveChangesAsync();
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync();
+        }
+
+        return service;
     }
 
     public async Task UpdateAsync(Guid id, string? name, int? durationMinutes, decimal? price, string? description, Guid? salonId = null)
@@ -74,7 +89,17 @@ public class ServicesService : IServicesService
         }
         service.UpdatedAt = DateTime.UtcNow;
 
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync()
+            : null;
+
         await _serviceRepository.UpdateAsync(service);
+        await _unitOfWork.SaveChangesAsync();
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync();
+        }
     }
 
     public async Task DeleteAsync(Guid id)
@@ -87,7 +112,17 @@ public class ServicesService : IServicesService
             throw new ConflictException("Service cannot be deleted because it is used by appointments.");
         }
 
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync()
+            : null;
+
         await _serviceRepository.DeleteAsync(service);
+        await _unitOfWork.SaveChangesAsync();
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync();
+        }
     }
 
     private async Task EnsureSalonBelongsToOrganizationAsync(Guid? salonId)

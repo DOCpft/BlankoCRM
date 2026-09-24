@@ -37,20 +37,19 @@ public class EfRepository<T> : IRepository<T> where T : class
     public virtual async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
     {
         await DbContext.Set<T>().AddAsync(entity, cancellationToken);
-        await DbContext.SaveChangesAsync(cancellationToken);
         return entity;
     }
 
-    public virtual async Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
+    public virtual Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
         DbContext.Set<T>().Update(entity);
-        await DbContext.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
-    public virtual async Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
+    public virtual Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
     {
         DbContext.Set<T>().Remove(entity);
-        await DbContext.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     public virtual Task<bool> ExistsAsync(
