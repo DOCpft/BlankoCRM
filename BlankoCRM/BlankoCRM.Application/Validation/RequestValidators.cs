@@ -138,6 +138,29 @@ public sealed class CreateAppointmentRequestValidator : AbstractValidator<Create
     }
 }
 
+public sealed class CreatePublicAppointmentRequestValidator : AbstractValidator<CreatePublicAppointmentRequest>
+{
+    public CreatePublicAppointmentRequestValidator()
+    {
+        RuleFor(request => request.VkParams).NotEmpty();
+        RuleFor(request => request.Name).NotEmpty().MaximumLength(200);
+        RuleFor(request => request.Phone).MaximumLength(40);
+        RuleFor(request => request.Services).NotEmpty();
+        RuleForEach(request => request.Services).SetValidator(new PublicServiceInputValidator());
+        RuleFor(request => request.StartTime).NotEmpty();
+        RuleFor(request => request.Notes).MaximumLength(500);
+    }
+}
+
+public sealed class PublicServiceInputValidator : AbstractValidator<PublicServiceInput>
+{
+    public PublicServiceInputValidator()
+    {
+        RuleFor(input => input.ServiceId).NotEmpty();
+        RuleFor(input => input.Quantity).GreaterThan(0);
+    }
+}
+
 public sealed class ServiceInputCollectionValidator : AbstractValidator<List<ServiceInput>>
 {
     public ServiceInputCollectionValidator(IValidator<ServiceInput> serviceInputValidator)

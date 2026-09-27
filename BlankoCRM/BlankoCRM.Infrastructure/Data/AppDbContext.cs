@@ -77,6 +77,10 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
         {
             entity.HasKey(t => t.Id);
             entity.Property(t => t.Name).IsRequired().HasMaxLength(100);
+
+            // Slug хранится в нормализованном виде (lowercase), нормализация выполняется при записи
+            entity.Property(t => t.Slug).IsRequired().HasMaxLength(100);
+            entity.HasIndex(t => t.Slug).IsUnique();
         });
     }
 
@@ -113,7 +117,10 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
             entity.Property(contact => contact.Type).HasConversion<int>();
 
             entity.HasIndex(contact => contact.OrganizationId);
+            // Один контакт данного типа у клиента
             entity.HasIndex(contact => new { contact.ClientId, contact.Type }).IsUnique();
+            // Значение контакта (например, vk_user_id) уникально в пределах организации
+            entity.HasIndex(contact => new { contact.OrganizationId, contact.Type, contact.Value }).IsUnique();
 
             entity.HasOne(contact => contact.Client)
                 .WithMany(client => client.Contacts)
@@ -161,6 +168,7 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
             entity.HasIndex(a => a.OrganizationId);
             entity.HasIndex(a => a.StartTime);
             entity.HasIndex(a => new { a.OrganizationId, a.StartTime }); // для календаря
+            entity.HasIndex(a => new { a.Status, a.ExpiresAt }); // для фоновой отмены просроченных заявок
 
             // Связь с Organization
             entity.HasOne(a => a.Organization)

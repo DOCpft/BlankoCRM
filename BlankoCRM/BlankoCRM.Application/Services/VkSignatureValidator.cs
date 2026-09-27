@@ -14,12 +14,14 @@ namespace BlankoCRM.Application.Services
     /// </summary>
     public class VkSignatureValidator : IVkSignatureValidator
     {
-        private readonly string _secret;
+        private readonly byte[] _signingKey;
 
         public VkSignatureValidator(IConfiguration configuration)
         {
-            _secret = configuration["VkApp:Secret"]
+            var appSecret = configuration["VkApp:Secret"]
                 ?? throw new InvalidOperationException("VkApp:Secret is not configured.");
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(appSecret));
+            _signingKey = hmac.ComputeHash(Encoding.UTF8.GetBytes("VK Mini Apps"));
         }
 
         /// <inheritdoc />
@@ -37,7 +39,7 @@ namespace BlankoCRM.Application.Services
 
             var queryString = string.Join("&", ordered);
 
-            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_secret));
+            using var hmac = new HMACSHA256(_signingKey);
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(queryString));
 
             var computed = Convert.ToBase64String(hash)

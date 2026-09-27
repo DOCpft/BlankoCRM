@@ -72,13 +72,11 @@ namespace BlankoCRM.Application.DTOs
     /// </summary>
     /// <param name="ClientId">Идентификатор клиента.</param>
     /// <param name="Services">Список услуг.</param>
-    /// <param name="Status">Статус записи.</param>
     /// <param name="Notes">Заметки.</param>
     /// <param name="SalonId">Идентификатор салона.</param>
     public record UpdateSlotAppointmentData(
         Guid? ClientId,
         List<ServiceInput>? Services,
-        AppointmentStatus? Status,
         string? Notes,
         Guid? SalonId = null
     );

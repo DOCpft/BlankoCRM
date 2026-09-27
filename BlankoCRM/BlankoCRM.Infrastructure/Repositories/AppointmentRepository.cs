@@ -22,6 +22,16 @@ public sealed class AppointmentRepository : EfRepository<Appointment>, IAppointm
             .FirstOrDefaultAsync(appointment => appointment.Id == id, cancellationToken);
     }
 
+    public async Task LockForUpdateAsync(
+        Guid organizationId,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        await DbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT 1 FROM \"Appointments\" WHERE \"OrganizationId\" = {organizationId} AND \"Id\" = {id} FOR UPDATE",
+            cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Appointment>> GetForDayAsync(DateTime date, CancellationToken cancellationToken = default)
     {
         var dayStart = date.Date;
@@ -36,6 +46,21 @@ public sealed class AppointmentRepository : EfRepository<Appointment>, IAppointm
             .ToListAsync(cancellationToken);
     }
 
+    public Task<int> CountActivePendingAsync(
+        Guid organizationId,
+        Guid clientId,
+        DateTime now,
+        CancellationToken cancellationToken = default)
+    {
+        return DbContext.Appointments.CountAsync(appointment =>
+            appointment.OrganizationId == organizationId
+            && appointment.ClientId == clientId
+            && appointment.Status == AppointmentStatus.Pending
+            && appointment.ExpiresAt.HasValue
+            && appointment.ExpiresAt.Value > now,
+            cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Appointment>> GetAllWithDetailsAsync(CancellationToken cancellationToken = default)
     {
         return await DbContext.Appointments
@@ -44,6 +69,54 @@ public sealed class AppointmentRepository : EfRepository<Appointment>, IAppointm
             .Include(appointment => appointment.AppointmentServices)
             .OrderBy(appointment => appointment.StartTime)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Appointment>> GetActivePendingAsync(
+        Guid organizationId,
+        DateTime now,
+        CancellationToken cancellationToken = default)
+    {
+        return await DbContext.Appointments
+            .AsNoTracking()
+            .Include(appointment => appointment.Client)
+            .Include(appointment => appointment.AppointmentServices)
+            .Where(appointment => appointment.OrganizationId == organizationId
+                && appointment.Status == AppointmentStatus.Pending
+                && appointment.ExpiresAt.HasValue
+                && appointment.ExpiresAt.Value > now)
+            .OrderBy(appointment => appointment.StartTime)
+            .ThenBy(appointment => appointment.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> CancelExpiredPendingBatchAsync(
+        DateTime now,
+        int batchSize,
+        CancellationToken cancellationToken = default)
+    {
+        var expiredIds = await DbContext.Appointments
+            .IgnoreQueryFilters()
+            .Where(appointment => appointment.Status == AppointmentStatus.Pending
+                && appointment.ExpiresAt <= now)
+            .OrderBy(appointment => appointment.ExpiresAt)
+            .Select(appointment => appointment.Id)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
+
+        if (expiredIds.Count == 0)
+        {
+            return 0;
+        }
+
+        return await DbContext.Appointments
+            .IgnoreQueryFilters()
+            .Where(appointment => expiredIds.Contains(appointment.Id)
+                && appointment.Status == AppointmentStatus.Pending
+                && appointment.ExpiresAt <= now)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(appointment => appointment.Status, AppointmentStatus.Cancelled)
+                .SetProperty(appointment => appointment.UpdatedAt, now),
+                cancellationToken);
     }
 
     public Task<bool> HasOverlapAsync(
@@ -56,7 +129,10 @@ public sealed class AppointmentRepository : EfRepository<Appointment>, IAppointm
     {
         var query = DbContext.Appointments
             .Where(appointment => appointment.OrganizationId == organizationId
-                && (salonId == null || appointment.SalonId == salonId)
+                && appointment.SalonId == salonId
+                && (appointment.Status == AppointmentStatus.Scheduled
+                    || appointment.Status == AppointmentStatus.Completed
+                    || appointment.Status == AppointmentStatus.NoShow)
                 && appointment.StartTime < endTime
                 && appointment.EndTime > startTime);
 

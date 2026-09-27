@@ -1,14 +1,19 @@
 ﻿using BlankoCRM.Application;
+using BlankoCRM.Application.Abstract;
 using BlankoCRM.Core.Entities;
 using BlankoCRM.Core.Interfaces;
 using BlankoCRM.Infrastructure;
 using BlankoCRM.Infrastructure.Data;
 using BlankoCRM.Web.Extensions;
+using BlankoCRM.Web.BackgroundServices;
 using BlankoCRM.Web.Middleware;
 using BlankoCRM.Web.Swagger;
+using BlankoCRM.Web.RateLimiting;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -20,6 +25,7 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseBlankoSerilog();
@@ -44,6 +50,32 @@ builder.Services
 
 // Регистрируем сервисы слоя Application
 builder.Services.AddApplicationServices();
+builder.Services.AddSingleton<IPublicVkRateLimiter, PublicVkRateLimiter>();
+builder.Services.AddHostedService<PendingAppointmentExpirationWorker>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("public-appointment-create", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+    options.AddPolicy("public-appointment-withdraw", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
 
 // JWT configuration
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "rQ5S8mK3vF6tY1wB7nH9xP2aC4dG0JkL6oV5uI3eX7=";//?? throw new InvalidOperationException("JWT Key is not configured. Set Jwt:Key in appsettings.json or user secrets.");
@@ -68,6 +100,13 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.ForwardLimit = 1;
+});
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -133,6 +172,8 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -165,6 +206,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 
 // Middleware устанавливает OrganizationId из JWT для авторизованных запросов
@@ -208,6 +250,10 @@ app.Use(async (context, next) =>
         organizationContext.Clear();
     }
 });
+
+// Для публичных endpoint'ов (/api/public/{slug}/...) организация разрешается
+// по slug из маршрута после установки/сброса JWT-контекста организации.
+app.UseMiddleware<PublicOrganizationMiddleware>();
 
 app.UseHttpMetrics();   // Собирает метрики по HTTP-запросам
 app.MapMetrics();       // Открывает эндпоинт /metrics

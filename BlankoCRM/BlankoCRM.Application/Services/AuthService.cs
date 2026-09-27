@@ -22,7 +22,7 @@ public class AuthService : IAuthService
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
     private readonly IConfiguration _configuration;
-    private readonly IVkSignatureValidator _vkSignatureValidator;
+    private readonly IVkMiniAppAuthenticator _vkMiniAppAuthenticator;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
@@ -30,30 +30,35 @@ public class AuthService : IAuthService
         UserManager<AppUser> userManager,
         SignInManager<AppUser> signInManager,
         IConfiguration configuration,
-        IVkSignatureValidator vkSignatureValidator,
+        IVkMiniAppAuthenticator vkMiniAppAuthenticator,
         ILogger<AuthService> logger)
     {
         _unitOfWork = unitOfWork;
         _userManager = userManager;
         _signInManager = signInManager;
         _configuration = configuration;
-        _vkSignatureValidator = vkSignatureValidator;
+        _vkMiniAppAuthenticator = vkMiniAppAuthenticator;
         _logger = logger;
     }
 
     public async Task RegisterAsync(string? name, string email, string password, string? organizationName)
     {
         var normalizedEmail = email.Trim();
+        var organizationId = Guid.NewGuid();
         var organization = new Organization
         {
-            Id = Guid.NewGuid(),
+            Id = organizationId,
             Name = string.IsNullOrWhiteSpace(organizationName)
                 ? (string.IsNullOrWhiteSpace(name) ? normalizedEmail : name.Trim())
                 : organizationName.Trim(),
             CreatedAt = DateTime.UtcNow
         };
+        organization.Slug = OrganizationSlugGenerator.Generate(organization.Name, organizationId);
 
-        await using var transaction = await _unitOfWork.BeginTransactionAsync();
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync()
+            : null;
         _unitOfWork.Add(organization);
         await _unitOfWork.SaveChangesAsync();
 
@@ -69,11 +74,18 @@ public class AuthService : IAuthService
         var result = await _userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
-            await transaction.RollbackAsync();
+            if (ownsTransaction)
+            {
+                await transaction!.RollbackAsync();
+            }
+
             throw new ValidationException(string.Join("; ", result.Errors.Select(error => error.Description)));
         }
 
-        await transaction.CommitAsync();
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync();
+        }
         _logger.LogInformation("User {UserId} registered with email {Email}", user.Id, normalizedEmail);
     }
 
@@ -103,26 +115,8 @@ public class AuthService : IAuthService
     IReadOnlyDictionary<string, string> vkParams,
     CancellationToken cancellationToken = default)
     {
-        // 1. Извлекаем sign
-        if (!vkParams.TryGetValue("sign", out var sign) || string.IsNullOrWhiteSpace(sign))
-        {
-            _logger.LogWarning("VK login rejected: missing signature");
-            throw new UnauthorizedException("Отсутствует подпись VK.");
-        }
-
-        // 2. Проверяем подпись
-        if (!_vkSignatureValidator.Validate(vkParams, sign))
-        {
-            _logger.LogWarning("VK login rejected: invalid signature");
-            throw new UnauthorizedException("Недействительная подпись VK.");
-        }
-
-        // 3. Извлекаем vk_user_id (только после проверки подписи)
-        if (!vkParams.TryGetValue("vk_user_id", out var vkUserIdStr)
-            || !long.TryParse(vkUserIdStr, out var vkUserId))
-        {
-            throw new UnauthorizedException("Некорректный vk_user_id.");
-        }
+        // Подтверждённый VK ID извлекается только после проверки подписи и актуальности параметров.
+        var vkUserId = _vkMiniAppAuthenticator.Authenticate(vkParams);
 
         // 4. Ищем существующего пользователя
         var existingUser = await _userManager.Users
@@ -137,14 +131,19 @@ public class AuthService : IAuthService
         }
 
         // 5. Первый вход — создаём организацию и пользователя в одной транзакции
+        var organizationId = Guid.NewGuid();
         var organization = new Organization
         {
-            Id = Guid.NewGuid(),
+            Id = organizationId,
             Name = $"VK {vkUserId}",
             CreatedAt = DateTime.UtcNow
         };
+        organization.Slug = OrganizationSlugGenerator.Generate(organization.Name, organizationId);
 
-        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
 
         _unitOfWork.Add(organization);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -162,12 +161,19 @@ public class AuthService : IAuthService
         var result = await _userManager.CreateAsync(newUser);
         if (!result.Succeeded)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await transaction!.RollbackAsync(cancellationToken);
+            }
+
             throw new ValidationException(
                 string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        await transaction.CommitAsync(cancellationToken);
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync(cancellationToken);
+        }
 
         var token = GenerateJwtToken(newUser, Array.Empty<string>());
         _logger.LogInformation("VK user {UserId} registered successfully", newUser.Id);

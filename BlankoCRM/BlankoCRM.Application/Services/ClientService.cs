@@ -61,7 +61,7 @@ public class ClientService : IClientService
         {
             Id = Guid.NewGuid(),
             Name = name.Trim(),
-            Phone = Normalize(phone),
+            Phone = PhoneNumberNormalizer.Normalize(phone),
             BirthDate = birthDate,
             Notes = notes,
             CreatedAt = now,
@@ -113,7 +113,7 @@ public class ClientService : IClientService
         await EnsureSalonBelongsToOrganizationAsync(salonId);
 
         client.Name = name == null ? client.Name : name.Trim();
-        client.Phone = phone == null ? client.Phone : Normalize(phone);
+        client.Phone = phone == null ? client.Phone : PhoneNumberNormalizer.Normalize(phone);
         client.BirthDate = birthDate ?? client.BirthDate;
         client.Notes = notes ?? client.Notes;
         if (salonId.HasValue)
@@ -214,6 +214,5 @@ public class ClientService : IClientService
     private Guid GetOrganizationId() => _organizationContext.GetCurrentOrganizationId()
         ?? throw new UnauthorizedAccessException("Organization context is not initialized.");
 
-    private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 

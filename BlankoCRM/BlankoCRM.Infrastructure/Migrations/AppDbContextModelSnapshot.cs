@@ -151,6 +151,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Property<DateTime>("EndTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -184,6 +187,8 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.HasIndex("StartTime");
 
                     b.HasIndex("OrganizationId", "StartTime");
+
+                    b.HasIndex("Status", "ExpiresAt");
 
                     b.ToTable("Appointments", t =>
                         {
@@ -318,6 +323,9 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.HasIndex("ClientId", "Type")
                         .IsUnique();
 
+                    b.HasIndex("OrganizationId", "Type", "Value")
+                        .IsUnique();
+
                     b.ToTable("ClientContacts");
                 });
 
@@ -371,10 +379,18 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
 
                     b.ToTable("Organizations");
                 });

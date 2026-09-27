@@ -47,7 +47,7 @@ public sealed class ScheduleRepository : EfRepository<Schedule>, IScheduleReposi
             .FirstOrDefaultAsync(schedule => schedule.AppointmentId == appointmentId, cancellationToken);
     }
 
-    public Task<bool> HasOverlapAsync(
+    public Task<bool> HasOverlapWithFreeSlotsAsync(
         DateTime startTime,
         DateTime endTime,
         Guid organizationId,
@@ -58,27 +58,8 @@ public sealed class ScheduleRepository : EfRepository<Schedule>, IScheduleReposi
         return DbContext.Schedules.AnyAsync(schedule =>
             schedule.OrganizationId == organizationId
             && schedule.SalonId == salonId
+            && schedule.AppointmentId == null
             && (!excludedSlotId.HasValue || schedule.Id != excludedSlotId.Value)
-            && schedule.StartTime < endTime
-            && schedule.EndTime > startTime,
-            cancellationToken);
-    }
-
-    public Task<bool> HasOverlapWithOccupiedSlotsAsync(
-        DateTime startTime,
-        DateTime endTime,
-        Guid organizationId,
-        Guid? salonId = null,
-        Guid? excludedSlotId = null,
-        Guid? excludedAppointmentId = null,
-        CancellationToken cancellationToken = default)
-    {
-        return DbContext.Schedules.AnyAsync(schedule =>
-            schedule.OrganizationId == organizationId
-            && schedule.SalonId == salonId
-            && schedule.AppointmentId.HasValue
-            && (!excludedSlotId.HasValue || schedule.Id != excludedSlotId.Value)
-            && (!excludedAppointmentId.HasValue || schedule.AppointmentId != excludedAppointmentId.Value)
             && schedule.StartTime < endTime
             && schedule.EndTime > startTime,
             cancellationToken);

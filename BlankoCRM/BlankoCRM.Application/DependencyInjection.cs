@@ -20,11 +20,15 @@ public static class DependencyInjection
             configuration.AddMaps(typeof(AutoMapperProfile).Assembly));
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         services.AddScoped<IClientService, ClientService>();
+        services.AddScoped<IPublicClientResolver, PublicClientResolver>();
         services.AddScoped<IServicesService, ServicesService>();
         services.AddScoped<IAppointmentService, AppointmentService>();
+        services.AddScoped<IAppointmentExpirationService, AppointmentExpirationService>();
+        services.AddScoped<IPublicAppointmentService, PublicAppointmentService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IScheduleService, ScheduleService>();
         services.AddScoped<IVkSignatureValidator, VkSignatureValidator>();
+        services.AddScoped<IVkMiniAppAuthenticator, VkMiniAppAuthenticator>();
 
         return services;
     }

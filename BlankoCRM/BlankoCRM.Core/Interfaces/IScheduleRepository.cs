@@ -11,20 +11,12 @@ public interface IScheduleRepository : IRepository<Schedule>
     Task<Schedule?> GetSlotByAppointmentIdAsync(Guid appointmentId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Schedule>> GetByPeriodAsync(DateTime dateFrom, DateTime dateTo, CancellationToken cancellationToken = default);
     Task AddRangeAsync(IEnumerable<Schedule> entities, CancellationToken cancellationToken = default);
-    Task<bool> HasOverlapAsync(
+    Task<bool> HasOverlapWithFreeSlotsAsync(
         DateTime startTime,
         DateTime endTime,
         Guid organizationId,
         Guid? salonId = null,
         Guid? excludedSlotId = null,
-        CancellationToken cancellationToken = default);
-    Task<bool> HasOverlapWithOccupiedSlotsAsync(
-        DateTime startTime,
-        DateTime endTime,
-        Guid organizationId,
-        Guid? salonId = null,
-        Guid? excludedSlotId = null,
-        Guid? excludedAppointmentId = null,
         CancellationToken cancellationToken = default);
     Task<int> DeleteFreeSlotsByTimeAsync(
         DateTime startTime,

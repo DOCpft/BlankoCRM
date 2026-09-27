@@ -21,6 +21,7 @@ namespace BlankoCRM.Core.Entities
         public AppointmentStatus Status { get; set; } // Статус: запланировано, выполнено, отменено, не пришла
         public string? Notes { get; set; }            // Доп. заметки к визиту
         public bool ReminderSent { get; set; } // Напоминания в телеграм
+        public DateTime? ExpiresAt { get; set; } // Срок действия Pending-заявки (задаётся сервером)
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
@@ -44,11 +45,14 @@ namespace BlankoCRM.Core.Entities
 
     public enum AppointmentStatus
     {
-        Scheduled,   // Запланировано
-        Completed,   // Выполнено
-        Cancelled,   // Отменено мастером или клиентом
-        NoShow,      // Клиент не пришёл
-        Archived     // Архивирована без физического удаления
+        Scheduled = 0,   // Запланировано
+        Completed = 1,   // Выполнено
+        Cancelled = 2,   // Отменено мастером или клиентом
+        NoShow = 3,      // Клиент не пришёл
+        Archived = 4,    // Архивирована без физического удаления
+        Pending = 5,     // Ожидает подтверждения мастером (заявка клиента)
+        Rejected = 6,    // Отклонена мастером
+        Withdrawn = 7    // Отозвана клиентом
     }
 }
 

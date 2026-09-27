@@ -161,27 +161,56 @@ public class AppointmentsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Обновить статус записи.
-    /// </summary>
-    /// <param name="id">Идентификатор записи (GUID).</param>
-    /// <param name="request">Данные с новым статусом записи.</param>
-    /// <param name="cancellationToken">Токен отмены операции.</param>
-    /// <response code="204">Статус успешно обновлён (без тела ответа).</response>
-    /// <response code="400">Некорректные входные данные.</response>
-    /// <response code="401">Пользователь не авторизован.</response>
-    /// <response code="404">Запись с указанным ID не найдена.</response>
+    [HttpGet("pending")]
+    [ProducesResponseType(typeof(List<AppointmentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<List<AppointmentDto>>> GetPending(CancellationToken cancellationToken)
+    {
+        var appointments = await _appointmentService.GetPendingAppointmentsAsync(cancellationToken);
+        return Ok(_mapper.Map<List<AppointmentDto>>(appointments));
+    }
+
+    [HttpPost("{id:guid}/confirm")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [HttpPatch("{id:guid}/status")]
-    public async Task<IActionResult> UpdateStatus(
-        Guid id,
-        [FromBody] UpdateAppointmentStatusRequest request,
-        CancellationToken cancellationToken)
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Confirm(Guid id, CancellationToken cancellationToken)
     {
-        await _appointmentService.UpdateStatusAsync(id, request.Status, cancellationToken);
+        await _appointmentService.ConfirmAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/reject")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Reject(Guid id, CancellationToken cancellationToken)
+    {
+        await _appointmentService.RejectAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/complete")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Complete(Guid id, CancellationToken cancellationToken)
+    {
+        await _appointmentService.CompleteAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/no-show")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> MarkNoShow(Guid id, CancellationToken cancellationToken)
+    {
+        await _appointmentService.MarkNoShowAsync(id, cancellationToken);
         return NoContent();
     }
 }

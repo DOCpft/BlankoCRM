@@ -58,6 +58,17 @@ public class AppointmentService : IAppointmentService
         return appointments.ToList();
     }
 
+    public async Task<List<Appointment>> GetPendingAppointmentsAsync(CancellationToken cancellationToken = default)
+    {
+        var organizationId = _organizationContext.GetCurrentOrganizationId()
+            ?? throw new UnauthorizedAccessException("Organization context is not initialized.");
+        var appointments = await _appointmentRepository.GetActivePendingAsync(
+            organizationId,
+            DateTime.UtcNow,
+            cancellationToken);
+        return appointments.ToList();
+    }
+
     public async Task<Appointment> CreateAsync(
         Guid clientId,
         List<ServiceInput> serviceInputs,
@@ -134,7 +145,12 @@ public class AppointmentService : IAppointmentService
         }
         var organizationId = _organizationContext.GetCurrentOrganizationId()!.Value;
 
-        if (await _scheduleRepository.HasOverlapWithOccupiedSlotsAsync(startTime, end, organizationId, salonId))
+        if (await _appointmentRepository.HasOverlapAsync(
+            startTime,
+            end,
+            organizationId,
+            salonId,
+            cancellationToken: cancellationToken))
         {
             _logger.LogWarning(
                 "Appointment conflict: interval {Start}-{End}, organization {OrganizationId}",
@@ -171,13 +187,19 @@ public class AppointmentService : IAppointmentService
             CreatedAt = DateTime.UtcNow
         };
 
-        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
         _unitOfWork.Add(appointment);
         _unitOfWork.Add(schedule);
         await _scheduleRepository.DeleteFreeSlotsByTimeAsync(
             startTime, end, organizationId, salonId, cancellationToken: cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync(cancellationToken);
+        }
 
         _logger.LogInformation(
             "Appointment {AppointmentId} created for client {ClientId} at {StartTime}",
@@ -188,13 +210,20 @@ public class AppointmentService : IAppointmentService
 
     public async Task UpdateAsync(Guid id, UpdateAppointmentRequest request, CancellationToken cancellationToken = default)
     {
-        var appointment = await _appointmentRepository.GetByIdWithDetailsAsync(id)
-            ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
-
         var ownsTransaction = !_unitOfWork.HasActiveTransaction;
         await using var transaction = ownsTransaction
             ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
             : null;
+        var organizationId = _organizationContext.GetCurrentOrganizationId()
+            ?? throw new UnauthorizedAccessException("Organization context is not initialized.");
+        await _appointmentRepository.LockForUpdateAsync(organizationId, id, cancellationToken);
+        var appointment = await _appointmentRepository.GetByIdWithDetailsAsync(id)
+            ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
+
+        if (appointment.Status == AppointmentStatus.Pending)
+        {
+            throw new ConflictException("Ожидающую заявку нельзя редактировать. Используйте подтверждение, отклонение или отмену.");
+        }
 
         if (request.ClientId.HasValue && request.ClientId.Value != appointment.ClientId)
         {
@@ -249,13 +278,13 @@ public class AppointmentService : IAppointmentService
 
         if (request.StartTime.HasValue || request.Services is not null || request.SalonId.HasValue)
         {
-            if (await _scheduleRepository.HasOverlapWithOccupiedSlotsAsync(
+            if (await _appointmentRepository.HasOverlapAsync(
                 newStartTime,
                 endTime,
                 appointment.OrganizationId,
                 appointment.SalonId,
-                schedule?.Id,
-                appointment.Id))
+                appointment.Id,
+                cancellationToken))
             {
                 throw new ConflictException($"Время записи {newStartTime:g} - {endTime:g} уже занято.");
             }
@@ -277,11 +306,6 @@ public class AppointmentService : IAppointmentService
             }
         }
 
-        if (request.Status.HasValue)
-        {
-            appointment.Status = request.Status.Value;
-        }
-
         if (request.Notes is not null)
         {
             appointment.Notes = request.Notes;
@@ -298,11 +322,22 @@ public class AppointmentService : IAppointmentService
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
+        var organizationId = _organizationContext.GetCurrentOrganizationId()
+            ?? throw new UnauthorizedAccessException("Organization context is not initialized.");
+        await _appointmentRepository.LockForUpdateAsync(organizationId, id, cancellationToken);
         var appointment = await _appointmentRepository.GetByIdWithDetailsAsync(id)
             ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
 
+        if (appointment.Status == AppointmentStatus.Pending)
+        {
+            throw new ConflictException("Ожидающую заявку нельзя удалить.");
+        }
+
         var schedule = await _scheduleRepository.GetSlotByAppointmentIdAsync(id);
-        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
         if (schedule is not null)
         {
             schedule.AppointmentId = null;
@@ -311,39 +346,202 @@ public class AppointmentService : IAppointmentService
         appointment.Status = AppointmentStatus.Archived;
         appointment.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        if (ownsTransaction)
+        {
+            await transaction!.CommitAsync(cancellationToken);
+        }
 
         _logger.LogInformation("Appointment {AppointmentId} archived", appointment.Id);
     }
 
-    public Task CancelAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task ConfirmAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return UpdateStatusAsync(id, AppointmentStatus.Cancelled, cancellationToken);
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
+
+        try
+        {
+            var organizationId = _organizationContext.GetCurrentOrganizationId()
+                ?? throw new UnauthorizedAccessException("Organization context is not initialized.");
+            await _appointmentRepository.LockForUpdateAsync(organizationId, id, cancellationToken);
+            var appointment = await _appointmentRepository.GetByIdWithDetailsAsync(id, cancellationToken)
+                ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
+
+            if (appointment.Status != AppointmentStatus.Pending)
+            {
+                if (appointment.Status == AppointmentStatus.Scheduled)
+                {
+                    throw new ConflictException("Запись уже подтверждена");
+                }
+
+                throw new ConflictException("Подтвердить можно только ожидающую заявку.");
+            }
+
+            if (!appointment.ExpiresAt.HasValue || appointment.ExpiresAt.Value <= DateTime.UtcNow)
+            {
+                throw new ConflictException("Срок действия заявки истёк.");
+            }
+
+            if (await _appointmentRepository.HasOverlapAsync(
+                appointment.StartTime,
+                appointment.EndTime,
+                organizationId,
+                appointment.SalonId,
+                appointment.Id,
+                cancellationToken))
+            {
+                throw new ConflictException("На это время уже есть подтверждённая запись.");
+            }
+
+            if (await _scheduleRepository.GetSlotByAppointmentIdAsync(appointment.Id, cancellationToken) is not null)
+            {
+                throw new ConflictException("Для заявки уже существует запись в расписании.");
+            }
+
+            var now = DateTime.UtcNow;
+            appointment.Status = AppointmentStatus.Scheduled;
+            appointment.UpdatedAt = now;
+            var schedule = new Schedule
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organizationId,
+                SalonId = appointment.SalonId,
+                AppointmentId = appointment.Id,
+                Appointment = appointment,
+                StartTime = appointment.StartTime,
+                EndTime = appointment.EndTime,
+                CreatedAt = now
+            };
+            appointment.Schedule = schedule;
+
+            _unitOfWork.Add(schedule);
+            await _scheduleRepository.DeleteFreeSlotsByTimeAsync(
+                appointment.StartTime,
+                appointment.EndTime,
+                organizationId,
+                appointment.SalonId,
+                cancellationToken: cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            if (ownsTransaction)
+            {
+                await transaction!.CommitAsync(cancellationToken);
+            }
+
+            _logger.LogInformation("Pending appointment {AppointmentId} confirmed", appointment.Id);
+        }
+        catch
+        {
+            if (ownsTransaction && _unitOfWork.HasActiveTransaction)
+            {
+                await transaction!.RollbackAsync(cancellationToken);
+            }
+
+            throw;
+        }
     }
 
-    public async Task UpdateStatusAsync(
-        Guid id,
-        AppointmentStatus status,
-        CancellationToken cancellationToken = default)
+    public Task RejectAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var appointment = await _appointmentRepository.GetByIdAsync(id)
-            ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
+        return TransitionStatusAsync(
+            id,
+            AppointmentStatus.Rejected,
+            [AppointmentStatus.Pending],
+            releaseSchedule: false,
+            cancellationToken);
+    }
 
-        var schedule = await _scheduleRepository.GetSlotByAppointmentIdAsync(id);
-        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
-        appointment.Status = status;
-        appointment.UpdatedAt = DateTime.UtcNow;
-        if (status == AppointmentStatus.Cancelled && schedule is not null)
+    public Task CancelAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return TransitionStatusAsync(
+            id,
+            AppointmentStatus.Cancelled,
+            [AppointmentStatus.Pending, AppointmentStatus.Scheduled],
+            releaseSchedule: true,
+            cancellationToken);
+    }
+
+    public Task CompleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return TransitionStatusAsync(
+            id,
+            AppointmentStatus.Completed,
+            [AppointmentStatus.Scheduled],
+            releaseSchedule: false,
+            cancellationToken);
+    }
+
+    public Task MarkNoShowAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return TransitionStatusAsync(
+            id,
+            AppointmentStatus.NoShow,
+            [AppointmentStatus.Scheduled],
+            releaseSchedule: false,
+            cancellationToken);
+    }
+
+    private async Task TransitionStatusAsync(
+        Guid id,
+        AppointmentStatus targetStatus,
+        IReadOnlyCollection<AppointmentStatus> allowedSourceStatuses,
+        bool releaseSchedule,
+        CancellationToken cancellationToken)
+    {
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
+
+        try
         {
-            schedule.AppointmentId = null;
-            schedule.Appointment = null;
-        }
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            var organizationId = _organizationContext.GetCurrentOrganizationId()
+                ?? throw new UnauthorizedAccessException("Organization context is not initialized.");
+            await _appointmentRepository.LockForUpdateAsync(organizationId, id, cancellationToken);
+            var appointment = await _appointmentRepository.GetByIdWithDetailsAsync(id, cancellationToken)
+                ?? throw new NotFoundException($"Appointment with ID {id} was not found.");
 
-        _logger.LogInformation(
-            "Appointment {AppointmentId} status changed to {Status}",
-            appointment.Id, status);
+            if (!allowedSourceStatuses.Contains(appointment.Status))
+            {
+                throw new ConflictException($"Недопустимый переход статуса {appointment.Status} -> {targetStatus}.");
+            }
+
+            if (targetStatus == AppointmentStatus.Cancelled
+                && appointment.Status == AppointmentStatus.Scheduled
+                && releaseSchedule)
+            {
+                var schedule = await _scheduleRepository.GetSlotByAppointmentIdAsync(id, cancellationToken);
+                if (schedule is not null)
+                {
+                    schedule.AppointmentId = null;
+                    schedule.Appointment = null;
+                }
+            }
+
+            appointment.Status = targetStatus;
+            appointment.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await transaction!.CommitAsync(cancellationToken);
+            }
+
+            _logger.LogInformation(
+                "Appointment {AppointmentId} status changed to {Status}",
+                appointment.Id,
+                targetStatus);
+        }
+        catch
+        {
+            if (ownsTransaction && _unitOfWork.HasActiveTransaction)
+            {
+                await transaction!.RollbackAsync(cancellationToken);
+            }
+
+            throw;
+        }
     }
 }
 

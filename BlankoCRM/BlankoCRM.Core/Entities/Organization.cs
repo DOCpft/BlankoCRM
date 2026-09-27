@@ -14,6 +14,12 @@ namespace BlankoCRM.Core.Entities
     {
         public Guid Id { get; set; }               // Первичный ключ
         public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Уникальный человекочитаемый идентификатор организации для публичных endpoint'ов.
+        /// Хранится в нормализованном виде (lowercase), не изменяется клиентом.
+        /// </summary>
+        public string Slug { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 

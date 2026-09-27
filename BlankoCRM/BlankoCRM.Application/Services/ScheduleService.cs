@@ -11,6 +11,7 @@ namespace BlankoCRM.Application.Services;
 public class ScheduleService : IScheduleService
 {
     private readonly IScheduleRepository _scheduleRepository;
+    private readonly IAppointmentRepository _appointmentRepository;
     private readonly IAppointmentService _appointmentService;
     private readonly IOrganizationContext _organizationContext;
     private readonly IUnitOfWork _unitOfWork;
@@ -18,12 +19,14 @@ public class ScheduleService : IScheduleService
 
     public ScheduleService(
         IScheduleRepository scheduleRepository,
+        IAppointmentRepository appointmentRepository,
         IAppointmentService appointmentService,
         IOrganizationContext organizationContext,
         IUnitOfWork unitOfWork,
         ILogger<ScheduleService> logger)
     {
         _scheduleRepository = scheduleRepository;
+        _appointmentRepository = appointmentRepository;
         _appointmentService = appointmentService;
         _organizationContext = organizationContext;
         _unitOfWork = unitOfWork;
@@ -75,11 +78,7 @@ public class ScheduleService : IScheduleService
         }
 
         var organizationId = GetOrganizationId();
-        if (_unitOfWork.HasActiveTransaction)
-        {
-            throw new InvalidOperationException(
-                "Batch-добавление слотов не поддерживается внутри внешней транзакции.");
-        }
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
 
         var slots = addedSlots
             .Select(request =>
@@ -91,6 +90,14 @@ public class ScheduleService : IScheduleService
 
         EnsureNoBatchOverlap(slots);
 
+        if (!ownsTransaction)
+        {
+            await EnsureNoOverlapInBatchAsync(slots, organizationId, cancellationToken);
+            await _scheduleRepository.AddRangeAsync(slots, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return slots;
+        }
+
         const int maxRetries = 3;
         for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
@@ -100,23 +107,7 @@ public class ScheduleService : IScheduleService
                     IsolationLevel.Serializable,
                     cancellationToken);
 
-                foreach (var slot in slots)
-                {
-                    if (await _scheduleRepository.HasOverlapAsync(
-                        slot.StartTime,
-                        slot.EndTime,
-                        organizationId,
-                        slot.SalonId,
-                        cancellationToken: cancellationToken))
-                    {
-                        _logger.LogWarning(
-                            "Free slot conflict: interval {Start}-{End}, organization {OrganizationId}",
-                            slot.StartTime,
-                            slot.EndTime,
-                            organizationId);
-                        throw new ConflictException("Указанный интервал уже занят другим слотом.");
-                    }
-                }
+                await EnsureNoOverlapInBatchAsync(slots, organizationId, cancellationToken);
 
                 await _scheduleRepository.AddRangeAsync(slots, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -139,17 +130,43 @@ public class ScheduleService : IScheduleService
         throw new InvalidOperationException("Batch-добавление слотов завершилось без результата.");
     }
 
+    private async Task EnsureNoOverlapInBatchAsync(
+        IReadOnlyList<Schedule> slots,
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        foreach (var slot in slots)
+        {
+            if (await HasOverlapWithFreeSlotConflictAsync(
+                slot.StartTime,
+                slot.EndTime,
+                organizationId,
+                slot.SalonId,
+                excludedSlotId: null,
+                cancellationToken: cancellationToken))
+            {
+                _logger.LogWarning(
+                    "Free slot conflict: interval {Start}-{End}, organization {OrganizationId}",
+                    slot.StartTime,
+                    slot.EndTime,
+                    organizationId);
+                throw new ConflictException("Указанный интервал уже занят другим слотом.");
+            }
+        }
+    }
+
     private async Task EnsureNoOverlapAsync(
         CreateFreeSlotRequest request,
         Guid organizationId,
         CancellationToken cancellationToken)
     {
-        if (await _scheduleRepository.HasOverlapAsync(
+        if (await HasOverlapWithFreeSlotConflictAsync(
             request.StartTime,
             request.EndTime,
             organizationId,
             request.SalonId,
-            cancellationToken: cancellationToken))
+            excludedSlotId: null,
+            cancellationToken))
         {
             _logger.LogWarning(
                 "Free slot conflict: interval {Start}-{End}, organization {OrganizationId}",
@@ -158,6 +175,29 @@ public class ScheduleService : IScheduleService
                 organizationId);
             throw new ConflictException("Указанный интервал уже занят другим слотом.");
         }
+    }
+
+    private async Task<bool> HasOverlapWithFreeSlotConflictAsync(
+        DateTime startTime,
+        DateTime endTime,
+        Guid organizationId,
+        Guid? salonId,
+        Guid? excludedSlotId,
+        CancellationToken cancellationToken)
+    {
+        return await _scheduleRepository.HasOverlapWithFreeSlotsAsync(
+                startTime,
+                endTime,
+                organizationId,
+                salonId,
+                excludedSlotId,
+                cancellationToken: cancellationToken)
+            || await _appointmentRepository.HasOverlapAsync(
+                startTime,
+                endTime,
+                organizationId,
+                salonId,
+                cancellationToken: cancellationToken);
     }
 
     private static Schedule CreateSlot(CreateFreeSlotRequest request, Guid organizationId)
@@ -292,14 +332,19 @@ public class ScheduleService : IScheduleService
         {
             if (slot.Appointment is null)
             {
-                if (await _scheduleRepository.HasOverlapAsync(
+                if (await HasOverlapWithFreeSlotConflictAsync(
                     startTime, endTime, organizationId, slot.SalonId, slot.Id, cancellationToken))
                 {
                     throw new ConflictException("Указанный интервал уже занят другим слотом.");
                 }
             }
-            else if (await _scheduleRepository.HasOverlapWithOccupiedSlotsAsync(
-                startTime, endTime, organizationId, slot.SalonId, slot.Id, slot.Appointment.Id))
+            else if (await _appointmentRepository.HasOverlapAsync(
+                startTime,
+                endTime,
+                organizationId,
+                slot.Appointment.SalonId,
+                slot.Appointment.Id,
+                cancellationToken))
             {
                 throw new ConflictException("Указанный интервал уже занят другой записью.");
             }
@@ -338,7 +383,6 @@ public class ScheduleService : IScheduleService
                     appointmentData.Services,
                     null,
                     null,
-                    appointmentData.Status,
                     appointmentData.Notes,
                     appointmentData.SalonId),
                 cancellationToken);

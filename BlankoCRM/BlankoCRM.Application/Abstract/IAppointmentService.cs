@@ -23,6 +23,7 @@ namespace BlankoCRM.Application.Abstract
         /// </summary>
         /// <returns></returns>
         Task<List<Appointment>> GetAllAppointmentsAsync(CancellationToken cancellationToken = default);
+        Task<List<Appointment>> GetPendingAppointmentsAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Создать новую запись.
@@ -46,7 +47,10 @@ namespace BlankoCRM.Application.Abstract
         /// Удалить запись.
         /// </summary>
         Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
-        Task UpdateStatusAsync(Guid id, AppointmentStatus status, CancellationToken cancellationToken = default);
+        Task ConfirmAsync(Guid id, CancellationToken cancellationToken = default);
+        Task RejectAsync(Guid id, CancellationToken cancellationToken = default);
+        Task CompleteAsync(Guid id, CancellationToken cancellationToken = default);
+        Task MarkNoShowAsync(Guid id, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Отменить запись (без удаления).

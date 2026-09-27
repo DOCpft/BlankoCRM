@@ -47,23 +47,11 @@ public class ExceptionHandlingMiddleware
         }
         catch (DbUpdateException ex)
         {
-            var sqlState = (ex.InnerException as PostgresException)?.SqlState;
-            _logger.LogError(ex, "Database error. SqlState: {SqlState}", sqlState);
-
-            context.Response.ContentType = "application/json";
-            var postgresException = ex.InnerException as PostgresException;
-            var (statusCode, message) = postgresException?.SqlState switch
-            {
-                PostgresErrorCodes.UniqueViolation => ((int)HttpStatusCode.Conflict, "A record with the same unique value already exists."),
-                PostgresErrorCodes.ForeignKeyViolation => ((int)HttpStatusCode.BadRequest, "The request references a missing related record."),
-                PostgresErrorCodes.CheckViolation => ((int)HttpStatusCode.BadRequest, "The data violates a database constraint."),
-                _ => ((int)HttpStatusCode.InternalServerError, "The database operation failed.")
-            };
-
-            context.Response.StatusCode = statusCode;
-            var response = new { error = message };
-
-            await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+            await WriteDatabaseErrorAsync(context, ex, FindPostgresException(ex));
+        }
+        catch (PostgresException ex)
+        {
+            await WriteDatabaseErrorAsync(context, ex, ex);
         }
         catch (Exception ex)
         {
@@ -80,6 +68,40 @@ public class ExceptionHandlingMiddleware
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(response));
         }
+    }
+
+    private async Task WriteDatabaseErrorAsync(
+        HttpContext context,
+        Exception exception,
+        PostgresException? postgresException)
+    {
+        _logger.LogError(exception, "Database error. SqlState: {SqlState}", postgresException?.SqlState);
+
+        var (statusCode, message) = postgresException?.SqlState switch
+        {
+            PostgresErrorCodes.UniqueViolation => ((int)HttpStatusCode.Conflict, "A record with the same unique value already exists."),
+            PostgresErrorCodes.ExclusionViolation => ((int)HttpStatusCode.Conflict, "На это время уже есть подтверждённая запись."),
+            PostgresErrorCodes.ForeignKeyViolation => ((int)HttpStatusCode.BadRequest, "The request references a missing related record."),
+            PostgresErrorCodes.CheckViolation => ((int)HttpStatusCode.BadRequest, "The data violates a database constraint."),
+            _ => ((int)HttpStatusCode.InternalServerError, "The database operation failed.")
+        };
+
+        context.Response.ContentType = "application/json";
+        context.Response.StatusCode = statusCode;
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = message }));
+    }
+
+    private static PostgresException? FindPostgresException(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException!)
+        {
+            if (current is PostgresException postgresException)
+            {
+                return postgresException;
+            }
+        }
+
+        return null;
     }
 }
 

@@ -69,6 +69,36 @@ namespace BlankoCRM.Application.DTOs
     );
 
     /// <summary>
+    /// Публичная заявка клиента. VK-параметры содержат подписанные параметры запуска, включая sign.
+    /// Идентификатор организации и VK ID из обычных полей запроса не принимаются.
+    /// </summary>
+    public record CreatePublicAppointmentRequest(
+        [Required(ErrorMessage = "Параметры VK обязательны")]
+        Dictionary<string, string> VkParams,
+
+        [Required(ErrorMessage = "Имя клиента обязательно")]
+        [MaxLength(200, ErrorMessage = "Имя клиента не может быть длиннее 200 символов")]
+        string Name,
+
+        [MaxLength(40, ErrorMessage = "Телефон не может быть длиннее 40 символов")]
+        string? Phone,
+
+        [Required(ErrorMessage = "Необходимо указать хотя бы одну услугу")]
+        [MinLength(1, ErrorMessage = "Должна быть указана хотя бы одна услуга")]
+        List<PublicServiceInput> Services,
+
+        [Required(ErrorMessage = "Время начала обязательно")]
+        DateTimeOffset StartTime,
+
+        [MaxLength(500, ErrorMessage = "Заметки не могут быть длиннее 500 символов")]
+        string? Notes);
+
+    /// <summary>
+    /// Услуга, выбранная клиентом. Цена и длительность берутся сервером из каталога организации.
+    /// </summary>
+    public record PublicServiceInput(Guid ServiceId, int Quantity = 1);
+
+    /// <summary>
     /// Входные данные по одной услуге в записи.
     /// </summary>
     /// <param name="ServiceId">Идентификатор услуги.</param>
@@ -89,7 +119,6 @@ namespace BlankoCRM.Application.DTOs
     /// <param name="Services">Новый список услуг (необязательно).</param>
     /// <param name="StartTime">Новое время начала (необязательно).</param>
     /// <param name="EndTime">Новое время окончания (необязательно).</param>
-    /// <param name="Status">Новый статус (необязательно).</param>
     /// <param name="Notes">Новые заметки (не более 500 символов).</param>
     /// <param name="SalonId">Идентификатор салона (необязательно).</param>
     public record UpdateAppointmentRequest(
@@ -97,15 +126,8 @@ namespace BlankoCRM.Application.DTOs
         List<ServiceInput>? Services,
         DateTime? StartTime,
         DateTime? EndTime,
-        AppointmentStatus? Status,
 
         [MaxLength(500, ErrorMessage = "Заметки не могут быть длиннее 500 символов")]
         string? Notes,
         Guid? SalonId = null);
-
-    /// <summary>
-    /// Запрос на изменение статуса записи.
-    /// </summary>
-    /// <param name="Status">Новый статус записи.</param>
-    public record UpdateAppointmentStatusRequest(AppointmentStatus Status);
 }

@@ -16,6 +16,7 @@ public interface IUnitOfWork
     void ClearTracking();
 
     bool IsSerializationFailure(Exception exception);
+    bool IsUniqueViolation(Exception exception);
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
