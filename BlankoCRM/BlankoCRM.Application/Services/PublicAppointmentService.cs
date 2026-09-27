@@ -25,6 +25,7 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly IClientRepository _clientRepository;
     private readonly IRepository<Core.Entities.Service> _serviceRepository;
+    private readonly ITelegramNotificationService _telegramNotificationService;
     private readonly ILogger<PublicAppointmentService> _logger;
 
     public PublicAppointmentService(
@@ -36,6 +37,7 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
         IAppointmentRepository appointmentRepository,
         IClientRepository clientRepository,
         IRepository<Core.Entities.Service> serviceRepository,
+        ITelegramNotificationService telegramNotificationService,
         ILogger<PublicAppointmentService> logger)
     {
         _unitOfWork = unitOfWork;
@@ -46,6 +48,7 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
         _appointmentRepository = appointmentRepository;
         _clientRepository = clientRepository;
         _serviceRepository = serviceRepository;
+        _telegramNotificationService = telegramNotificationService;
         _logger = logger;
     }
 
@@ -154,7 +157,7 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
         {
             try
             {
-                return await CreatePendingAttemptAsync(
+                var appointment = await CreatePendingAttemptAsync(
                     request,
                     organizationId,
                     verifiedVkUserId,
@@ -162,6 +165,9 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
                     startTime,
                     endTime,
                     cancellationToken);
+
+                await NotifyMasterAboutPendingAsync(appointment, cancellationToken);
+                return appointment;
             }
             catch (Exception exception) when (
                 _unitOfWork.IsUniqueViolation(exception) && !_unitOfWork.HasActiveTransaction)
@@ -181,6 +187,21 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
         }
 
         throw new InvalidOperationException("Создание публичной заявки завершилось без результата.");
+    }
+
+    private async Task NotifyMasterAboutPendingAsync(Appointment appointment, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _telegramNotificationService.NotifyMasterNewPendingAsync(appointment, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Не удалось отправить Telegram-уведомление о новой заявке {AppointmentId}.",
+                appointment.Id);
+        }
     }
 
     public async Task WithdrawAsync(

@@ -25,6 +25,8 @@ public class AuthService : IAuthService
     private readonly IVkMiniAppAuthenticator _vkMiniAppAuthenticator;
     private readonly ILogger<AuthService> _logger;
 
+    private static readonly int[] DefaultReminderOffsets = [1, 3, 6, 12, 24];
+
     public AuthService(
         IUnitOfWork unitOfWork,
         UserManager<AppUser> userManager,
@@ -81,6 +83,8 @@ public class AuthService : IAuthService
 
             throw new ValidationException(string.Join("; ", result.Errors.Select(error => error.Description)));
         }
+
+        await SeedDefaultReminderSettingsAsync(user.Id, organization.Id);
 
         if (ownsTransaction)
         {
@@ -170,6 +174,8 @@ public class AuthService : IAuthService
                 string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
+        await SeedDefaultReminderSettingsAsync(newUser.Id, organization.Id, cancellationToken);
+
         if (ownsTransaction)
         {
             await transaction!.CommitAsync(cancellationToken);
@@ -178,6 +184,26 @@ public class AuthService : IAuthService
         var token = GenerateJwtToken(newUser, Array.Empty<string>());
         _logger.LogInformation("VK user {UserId} registered successfully", newUser.Id);
         return (token, newUser.Name, newUser.Email ?? string.Empty);
+    }
+
+    private async Task SeedDefaultReminderSettingsAsync(
+        Guid appUserId,
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var offsetHours in DefaultReminderOffsets)
+        {
+            _unitOfWork.Add(new MasterReminderSetting
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = organizationId,
+                AppUserId = appUserId,
+                OffsetHours = offsetHours,
+                Enabled = offsetHours is 1 or 3 or 6
+            });
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private string GenerateJwtToken(AppUser user, IEnumerable<string> roles)

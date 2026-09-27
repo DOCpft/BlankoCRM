@@ -106,6 +106,27 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<long?>("TelegramChatId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TelegramLinkCode")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("TelegramLinkCodeExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("TelegramNotificationsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("Europe/Moscow");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -128,6 +149,10 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.HasIndex("OrganizationId");
 
                     b.HasIndex("SalonId");
+
+                    b.HasIndex("TelegramChatId")
+                        .IsUnique()
+                        .HasFilter("\"TelegramChatId\" IS NOT NULL");
 
                     b.HasIndex("VkUserId")
                         .IsUnique()
@@ -194,6 +219,34 @@ namespace BlankoCRM.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_Appointment_EndTime", "\"EndTime\" >= \"StartTime\"");
                         });
+                });
+
+            modelBuilder.Entity("BlankoCRM.Core.Entities.AppointmentReminderLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("OffsetHours")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("AppointmentId", "OffsetHours")
+                        .IsUnique();
+
+                    b.ToTable("AppointmentReminderLogs");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.AppointmentService", b =>
@@ -363,6 +416,34 @@ namespace BlankoCRM.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("MasterProfiles");
+                });
+
+            modelBuilder.Entity("BlankoCRM.Core.Entities.MasterReminderSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AppUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("OffsetHours")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("AppUserId", "OffsetHours")
+                        .IsUnique();
+
+                    b.ToTable("MasterReminderSettings");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Organization", b =>
@@ -662,6 +743,17 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Navigation("Salon");
                 });
 
+            modelBuilder.Entity("BlankoCRM.Core.Entities.AppointmentReminderLog", b =>
+                {
+                    b.HasOne("BlankoCRM.Core.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+                });
+
             modelBuilder.Entity("BlankoCRM.Core.Entities.AppointmentService", b =>
                 {
                     b.HasOne("BlankoCRM.Core.Entities.Appointment", "Appointment")
@@ -755,6 +847,17 @@ namespace BlankoCRM.Infrastructure.Migrations
                     b.Navigation("Salon");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BlankoCRM.Core.Entities.MasterReminderSetting", b =>
+                {
+                    b.HasOne("BlankoCRM.Core.Entities.AppUser", "AppUser")
+                        .WithMany()
+                        .HasForeignKey("AppUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AppUser");
                 });
 
             modelBuilder.Entity("BlankoCRM.Core.Entities.Salon", b =>

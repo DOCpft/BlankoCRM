@@ -29,6 +29,11 @@ public static class DependencyInjection
         services.AddScoped<IScheduleService, ScheduleService>();
         services.AddScoped<IVkSignatureValidator, VkSignatureValidator>();
         services.AddScoped<IVkMiniAppAuthenticator, VkMiniAppAuthenticator>();
+        services.AddScoped<ITelegramNotificationService, TelegramNotificationService>();
+        services.AddScoped<ITelegramLinkService, TelegramLinkService>();
+        services.AddScoped<IReminderSettingService, ReminderSettingService>();
+        services.AddScoped<ITelegramWebhookHandler, TelegramWebhookHandler>();
+        services.AddScoped<IReminderDispatchService, ReminderDispatchService>();
 
         return services;
     }

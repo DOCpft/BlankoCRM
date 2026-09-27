@@ -237,3 +237,23 @@ public sealed class VkMiniAppAuthRequestValidator : AbstractValidator<VkMiniAppA
             .When(x => x.VkParams is not null && x.VkParams.Count > 0);
     }
 }
+
+public sealed class UpdateReminderSettingsRequestValidator : AbstractValidator<UpdateReminderSettingsRequest>
+{
+    private static readonly int[] AllowedOffsets = [1, 3, 6, 12, 24];
+
+    public UpdateReminderSettingsRequestValidator()
+    {
+        RuleFor(request => request.Settings)
+            .NotEmpty()
+            .WithMessage("Необходимо указать хотя бы одну настройку напоминаний.");
+
+        RuleForEach(request => request.Settings)
+            .ChildRules(setting =>
+            {
+                setting.RuleFor(item => item.OffsetHours)
+                    .Must(offset => AllowedOffsets.Contains(offset))
+                    .WithMessage("Недопустимый offset часов. Допустимые значения: 1, 3, 6, 12, 24.");
+            });
+    }
+}

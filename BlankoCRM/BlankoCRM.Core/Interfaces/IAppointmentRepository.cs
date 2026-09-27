@@ -31,4 +31,14 @@ public interface IAppointmentRepository : IRepository<Appointment>
         Guid? salonId = null,
         Guid? excludedAppointmentId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Возвращает записи со статусом Scheduled, попадающие в заданный временной интервал,
+    /// вместе с данными клиента и услугами. Используется фоновым сервисом напоминаний
+    /// и поэтому игнорирует глобальный фильтр мультитенантности.
+    /// </summary>
+    Task<IReadOnlyList<Appointment>> GetScheduledInWindowAsync(
+        DateTime fromUtc,
+        DateTime toUtc,
+        CancellationToken cancellationToken = default);
 }

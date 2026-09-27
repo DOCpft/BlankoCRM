@@ -143,4 +143,53 @@ public sealed class AppointmentRepository : EfRepository<Appointment>, IAppointm
 
         return query.AnyAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Appointment>> GetScheduledInWindowAsync(
+        DateTime fromUtc,
+        DateTime toUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var appointments = await DbContext.Appointments
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(appointment => appointment.Status == AppointmentStatus.Scheduled
+                && appointment.StartTime >= fromUtc
+                && appointment.StartTime <= toUtc)
+            .OrderBy(appointment => appointment.StartTime)
+            .ToListAsync(cancellationToken);
+
+        if (appointments.Count == 0)
+        {
+            return appointments;
+        }
+
+        var appointmentIds = appointments.Select(appointment => appointment.Id).ToList();
+        var clientIds = appointments.Select(appointment => appointment.ClientId).Distinct().ToList();
+
+        var clients = await DbContext.Clients
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(client => clientIds.Contains(client.Id))
+            .ToDictionaryAsync(client => client.Id, cancellationToken);
+
+        var appointmentServices = await DbContext.AppointmentServices
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(aps => appointmentIds.Contains(aps.AppointmentId))
+            .ToListAsync(cancellationToken);
+
+        foreach (var appointment in appointments)
+        {
+            if (clients.TryGetValue(appointment.ClientId, out var client))
+            {
+                appointment.Client = client;
+            }
+
+            appointment.AppointmentServices = appointmentServices
+                .Where(aps => aps.AppointmentId == appointment.Id)
+                .ToList();
+        }
+
+        return appointments;
+    }
 }

@@ -35,11 +35,13 @@ builder.Services.AddSystemMetrics();
 //builder.Services.AddDbContext<AppDbContext>(options =>
 //    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IOrganizationContext, OrganizationContext>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddInfrastructureRepositories();
+builder.Services.AddInfrastructureExternalServices();
 
 builder.Services
     .AddIdentityCore<AppUser>()
@@ -52,6 +54,7 @@ builder.Services
 builder.Services.AddApplicationServices();
 builder.Services.AddSingleton<IPublicVkRateLimiter, PublicVkRateLimiter>();
 builder.Services.AddHostedService<PendingAppointmentExpirationWorker>();
+builder.Services.AddHostedService<AppointmentReminderWorker>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -172,6 +175,12 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+if (string.IsNullOrWhiteSpace(app.Configuration["Telegram:BotToken"]))
+{
+    startupLogger.LogWarning("Telegram:BotToken не настроен. Telegram-уведомления будут отключены.");
+}
+
 app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
@@ -204,9 +213,9 @@ app.UseStaticFiles();
 app.UseBlankoRequestLogging();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseRateLimiter();
 
 
 // Middleware устанавливает OrganizationId из JWT для авторизованных запросов

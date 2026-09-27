@@ -32,6 +32,8 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
     public DbSet<Schedule> Schedules { get; set; }
     public DbSet<Salon> Salons { get; set; }
     public DbSet<MasterProfile> MasterProfiles { get; set; }
+    public DbSet<MasterReminderSetting> MasterReminderSettings { get; set; }
+    public DbSet<AppointmentReminderLog> AppointmentReminderLogs { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -69,6 +71,8 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
         ConfigureAppointmentService(modelBuilder);
         ConfigureSchedule(modelBuilder);
         ConfigureIdentityEntities(modelBuilder);
+        ConfigureMasterReminderSetting(modelBuilder);
+        ConfigureAppointmentReminderLog(modelBuilder);
     }
 
     private void ConfigureOrganization(ModelBuilder modelBuilder)
@@ -265,7 +269,15 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
             entity.HasIndex(user => user.VkUserId)
             .IsUnique()
             .HasFilter("\"VkUserId\" IS NOT NULL");
+            entity.HasIndex(user => user.TelegramChatId)
+                .IsUnique()
+                .HasFilter("\"TelegramChatId\" IS NOT NULL");
             entity.Property(user => user.Name).IsRequired().HasMaxLength(100);
+            entity.Property(user => user.TelegramNotificationsEnabled).HasDefaultValue(true);
+            entity.Property(user => user.TimeZone)
+                .IsRequired()
+                .HasMaxLength(64)
+                .HasDefaultValue("Europe/Moscow");
             entity.HasOne(user => user.Organization)
                 .WithMany(organization => organization.Users)
                 .HasForeignKey(user => user.OrganizationId)
@@ -300,6 +312,38 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
             entity.HasOne(salon => salon.Organization)
                 .WithMany(organization => organization.Salons)
                 .HasForeignKey(salon => salon.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private void ConfigureMasterReminderSetting(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MasterReminderSetting>(entity =>
+        {
+            entity.HasKey(setting => setting.Id);
+
+            entity.HasIndex(setting => setting.OrganizationId);
+            entity.HasIndex(setting => new { setting.AppUserId, setting.OffsetHours }).IsUnique();
+
+            entity.HasOne(setting => setting.AppUser)
+                .WithMany()
+                .HasForeignKey(setting => setting.AppUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private void ConfigureAppointmentReminderLog(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AppointmentReminderLog>(entity =>
+        {
+            entity.HasKey(log => log.Id);
+
+            entity.HasIndex(log => log.OrganizationId);
+            entity.HasIndex(log => new { log.AppointmentId, log.OffsetHours }).IsUnique();
+
+            entity.HasOne(log => log.Appointment)
+                .WithMany()
+                .HasForeignKey(log => log.AppointmentId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
