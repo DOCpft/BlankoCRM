@@ -22,6 +22,26 @@ public sealed class AppointmentRepository : EfRepository<Appointment>, IAppointm
             .FirstOrDefaultAsync(appointment => appointment.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Appointment>> GetClientAppointmentsAsync(
+        Guid organizationId,
+        Guid clientId,
+        DateTime now,
+        CancellationToken cancellationToken = default)
+    {
+        return await DbContext.Appointments
+            .AsNoTracking()
+            .Include(appointment => appointment.Client)
+            .Include(appointment => appointment.AppointmentServices)
+            .Where(appointment => appointment.OrganizationId == organizationId
+                && appointment.ClientId == clientId
+                && (appointment.Status == AppointmentStatus.Pending
+                    || appointment.Status == AppointmentStatus.Scheduled)
+                && (appointment.Status != AppointmentStatus.Pending
+                    || (appointment.ExpiresAt.HasValue && appointment.ExpiresAt.Value > now)))
+            .OrderBy(appointment => appointment.StartTime)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task LockForUpdateAsync(
         Guid organizationId,
         Guid id,
@@ -29,6 +49,25 @@ public sealed class AppointmentRepository : EfRepository<Appointment>, IAppointm
     {
         await DbContext.Database.ExecuteSqlInterpolatedAsync(
             $"SELECT 1 FROM \"Appointments\" WHERE \"OrganizationId\" = {organizationId} AND \"Id\" = {id} FOR UPDATE",
+            cancellationToken);
+    }
+
+    public Task<bool> HasOverlappingActivePendingAsync(
+        Guid organizationId,
+        Guid clientId,
+        DateTime startTime,
+        DateTime endTime,
+        DateTime now,
+        CancellationToken cancellationToken = default)
+    {
+        return DbContext.Appointments.AnyAsync(appointment =>
+            appointment.OrganizationId == organizationId
+            && appointment.ClientId == clientId
+            && appointment.Status == AppointmentStatus.Pending
+            && appointment.ExpiresAt.HasValue
+            && appointment.ExpiresAt.Value > now
+            && appointment.StartTime < endTime
+            && appointment.EndTime > startTime,
             cancellationToken);
     }
 

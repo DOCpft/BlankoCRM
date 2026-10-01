@@ -24,6 +24,7 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
     private readonly IPublicClientResolver _clientResolver;
     private readonly IAppointmentRepository _appointmentRepository;
     private readonly IClientRepository _clientRepository;
+    private readonly IScheduleRepository _scheduleRepository;
     private readonly IRepository<Core.Entities.Service> _serviceRepository;
     private readonly ITelegramNotificationService _telegramNotificationService;
     private readonly ILogger<PublicAppointmentService> _logger;
@@ -36,6 +37,7 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
         IPublicClientResolver clientResolver,
         IAppointmentRepository appointmentRepository,
         IClientRepository clientRepository,
+        IScheduleRepository scheduleRepository,
         IRepository<Core.Entities.Service> serviceRepository,
         ITelegramNotificationService telegramNotificationService,
         ILogger<PublicAppointmentService> logger)
@@ -47,9 +49,39 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
         _clientResolver = clientResolver;
         _appointmentRepository = appointmentRepository;
         _clientRepository = clientRepository;
+        _scheduleRepository = scheduleRepository;
         _serviceRepository = serviceRepository;
         _telegramNotificationService = telegramNotificationService;
         _logger = logger;
+    }
+
+    public async Task<IReadOnlyList<Appointment>> GetMyAppointmentsAsync(
+        IReadOnlyDictionary<string, string> vkParams,
+        CancellationToken cancellationToken = default)
+    {
+        if (vkParams is null)
+        {
+            throw new ValidationException("Параметры VK обязательны.");
+        }
+
+        var organizationId = _organizationContext.GetCurrentOrganizationId()
+            ?? throw new UnauthorizedAccessException("Organization context is not initialized.");
+        var verifiedVkUserId = _vkMiniAppAuthenticator.Authenticate(vkParams);
+        var client = await _clientRepository.FindByVkUserIdAsync(
+            organizationId,
+            verifiedVkUserId,
+            cancellationToken);
+
+        if (client is null)
+        {
+            return [];
+        }
+
+        return await _appointmentRepository.GetClientAppointmentsAsync(
+            organizationId,
+            client.Id,
+            DateTime.UtcNow,
+            cancellationToken);
     }
 
     public async Task<Appointment> CreatePendingAsync(
@@ -161,6 +193,7 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
                     request,
                     organizationId,
                     verifiedVkUserId,
+                    request.FreeSlotId,
                     appointmentServices,
                     startTime,
                     endTime,
@@ -271,10 +304,104 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
         }
     }
 
+    public Task CancelAsync(
+        Guid appointmentId,
+        IReadOnlyDictionary<string, string> vkParams,
+        CancellationToken cancellationToken = default)
+    {
+        return CancelOwnedAppointmentAsync(appointmentId, vkParams, cancellationToken);
+    }
+
+    private async Task CancelOwnedAppointmentAsync(
+        Guid appointmentId,
+        IReadOnlyDictionary<string, string> vkParams,
+        CancellationToken cancellationToken)
+    {
+        if (vkParams is null)
+        {
+            throw new ValidationException("Параметры VK обязательны.");
+        }
+
+        var organizationId = _organizationContext.GetCurrentOrganizationId()
+            ?? throw new UnauthorizedAccessException("Organization context is not initialized.");
+        var verifiedVkUserId = _vkMiniAppAuthenticator.Authenticate(vkParams);
+        if (!_vkRateLimiter.TryAcquire(verifiedVkUserId, PublicAppointmentOperation.Withdraw))
+        {
+            throw new TooManyRequestsException("Превышен лимит отмены записей. Повторите попытку позже.");
+        }
+
+        var ownsTransaction = !_unitOfWork.HasActiveTransaction;
+        await using var transaction = ownsTransaction
+            ? await _unitOfWork.BeginTransactionAsync(cancellationToken)
+            : null;
+
+        try
+        {
+            await _appointmentRepository.LockForUpdateAsync(organizationId, appointmentId, cancellationToken);
+            var client = await _clientRepository.FindByVkUserIdAsync(
+                organizationId,
+                verifiedVkUserId,
+                cancellationToken);
+            var appointment = await _appointmentRepository.GetByIdWithDetailsAsync(appointmentId, cancellationToken);
+
+            if (client is null
+                || appointment is null
+                || appointment.OrganizationId != organizationId
+                || appointment.ClientId != client.Id)
+            {
+                throw new NotFoundException("Запись не найдена.");
+            }
+
+            if (appointment.Status == AppointmentStatus.Pending)
+            {
+                if (!appointment.ExpiresAt.HasValue || appointment.ExpiresAt.Value <= DateTime.UtcNow)
+                {
+                    throw new ConflictException("Срок действия заявки истёк.");
+                }
+
+                appointment.Status = AppointmentStatus.Withdrawn;
+            }
+            else if (appointment.Status == AppointmentStatus.Scheduled)
+            {
+                var schedule = await _scheduleRepository.GetSlotByAppointmentIdAsync(
+                    appointment.Id,
+                    cancellationToken);
+                if (schedule is not null)
+                {
+                    schedule.AppointmentId = null;
+                    schedule.Appointment = null;
+                }
+
+                appointment.Status = AppointmentStatus.Cancelled;
+            }
+            else
+            {
+                throw new ConflictException("Отменить можно только активную заявку или подтверждённую запись.");
+            }
+
+            appointment.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (ownsTransaction)
+            {
+                await transaction!.CommitAsync(cancellationToken);
+            }
+        }
+        catch
+        {
+            if (ownsTransaction && _unitOfWork.HasActiveTransaction)
+            {
+                await transaction!.RollbackAsync(cancellationToken);
+            }
+
+            throw;
+        }
+    }
+
     private async Task<Appointment> CreatePendingAttemptAsync(
         CreatePublicAppointmentRequest request,
         Guid organizationId,
         long verifiedVkUserId,
+        Guid freeSlotId,
         List<AppointmentServiceEntity> appointmentServices,
         DateTime startTime,
         DateTime endTime,
@@ -287,6 +414,18 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
 
         try
         {
+            await _scheduleRepository.LockFreeSlotForUpdateAsync(organizationId, freeSlotId, cancellationToken);
+            var freeSlot = await _scheduleRepository.GetFreeSlotByIdAsync(
+                organizationId,
+                freeSlotId,
+                cancellationToken)
+                ?? throw new ConflictException("Выбранный свободный интервал больше недоступен.");
+
+            if (startTime < freeSlot.StartTime || endTime > freeSlot.EndTime)
+            {
+                throw new ValidationException("Заявка должна полностью помещаться в выбранный свободный интервал.");
+            }
+
             var client = await _clientResolver.ResolveAsync(
                 organizationId,
                 verifiedVkUserId,
@@ -304,6 +443,18 @@ public sealed class PublicAppointmentService : IPublicAppointmentService
             {
                 throw new TooManyRequestsException(
                     $"У клиента уже есть максимальное количество активных заявок ({MaxActivePendingPerClient}).");
+            }
+
+            var hasDuplicatePending = await _appointmentRepository.HasOverlappingActivePendingAsync(
+                organizationId,
+                client.Id,
+                startTime,
+                endTime,
+                DateTime.UtcNow,
+                cancellationToken);
+            if (hasDuplicatePending)
+            {
+                throw new ConflictException("У клиента уже есть ожидающая заявка на это время.");
             }
 
             var now = DateTime.UtcNow;

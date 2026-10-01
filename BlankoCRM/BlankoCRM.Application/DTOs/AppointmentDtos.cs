@@ -73,6 +73,9 @@ namespace BlankoCRM.Application.DTOs
     /// Идентификатор организации и VK ID из обычных полей запроса не принимаются.
     /// </summary>
     public record CreatePublicAppointmentRequest(
+        [Required(ErrorMessage = "Идентификатор свободного слота обязателен")]
+        Guid FreeSlotId,
+
         [Required(ErrorMessage = "Параметры VK обязательны")]
         Dictionary<string, string> VkParams,
 

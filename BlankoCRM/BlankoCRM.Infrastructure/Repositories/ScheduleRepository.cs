@@ -24,6 +24,46 @@ public sealed class ScheduleRepository : EfRepository<Schedule>, IScheduleReposi
             .FirstOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
     }
 
+    public Task<Schedule?> GetFreeSlotByIdAsync(
+        Guid organizationId,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        return DbContext.Schedules.FirstOrDefaultAsync(schedule =>
+            schedule.OrganizationId == organizationId
+            && schedule.Id == id
+            && schedule.AppointmentId == null,
+            cancellationToken);
+    }
+
+    public async Task LockFreeSlotForUpdateAsync(
+        Guid organizationId,
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        await DbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT 1 FROM \"Schedules\" WHERE \"OrganizationId\" = {organizationId} AND \"Id\" = {id} AND \"AppointmentId\" IS NULL FOR UPDATE",
+            cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Schedule>> GetFreeSlotsByPeriodAsync(
+        Guid organizationId,
+        DateTime dateFrom,
+        DateTime dateTo,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        return await DbContext.Schedules
+            .AsNoTracking()
+            .Where(schedule => schedule.OrganizationId == organizationId
+                && schedule.AppointmentId == null
+                && schedule.StartTime >= dateFrom
+                && schedule.StartTime < dateTo)
+            .OrderBy(schedule => schedule.StartTime)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Schedule>> GetByPeriodAsync(
         DateTime dateFrom,
         DateTime dateTo,

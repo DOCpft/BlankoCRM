@@ -8,6 +8,14 @@ namespace BlankoCRM.Core.Interfaces;
 public interface IScheduleRepository : IRepository<Schedule>
 {
     Task<Schedule?> GetByIdWithAppointmentAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Schedule?> GetFreeSlotByIdAsync(Guid organizationId, Guid id, CancellationToken cancellationToken = default);
+    Task LockFreeSlotForUpdateAsync(Guid organizationId, Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Schedule>> GetFreeSlotsByPeriodAsync(
+        Guid organizationId,
+        DateTime dateFrom,
+        DateTime dateTo,
+        int limit,
+        CancellationToken cancellationToken = default);
     Task<Schedule?> GetSlotByAppointmentIdAsync(Guid appointmentId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Schedule>> GetByPeriodAsync(DateTime dateFrom, DateTime dateTo, CancellationToken cancellationToken = default);
     Task AddRangeAsync(IEnumerable<Schedule> entities, CancellationToken cancellationToken = default);

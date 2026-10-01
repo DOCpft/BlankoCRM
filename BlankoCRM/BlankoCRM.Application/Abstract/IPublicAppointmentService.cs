@@ -9,7 +9,16 @@ public interface IPublicAppointmentService
         CreatePublicAppointmentRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Appointment>> GetMyAppointmentsAsync(
+        IReadOnlyDictionary<string, string> vkParams,
+        CancellationToken cancellationToken = default);
+
     Task WithdrawAsync(
+        Guid appointmentId,
+        IReadOnlyDictionary<string, string> vkParams,
+        CancellationToken cancellationToken = default);
+
+    Task CancelAsync(
         Guid appointmentId,
         IReadOnlyDictionary<string, string> vkParams,
         CancellationToken cancellationToken = default);

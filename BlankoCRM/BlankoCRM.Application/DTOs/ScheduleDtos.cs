@@ -15,6 +15,7 @@ namespace BlankoCRM.Application.DTOs
         DateTime EndTime,
         AppointmentDto? Appointment
     );
+    public record PublicFreeSlotDto(Guid Id, DateTime StartTime, DateTime EndTime);
 
     /// <summary>
     /// Запрос на создание свободного слота.

@@ -8,6 +8,11 @@ namespace BlankoCRM.Core.Interfaces;
 public interface IAppointmentRepository : IRepository<Appointment>
 {
     Task<Appointment?> GetByIdWithDetailsAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Appointment>> GetClientAppointmentsAsync(
+        Guid organizationId,
+        Guid clientId,
+        DateTime now,
+        CancellationToken cancellationToken = default);
     Task LockForUpdateAsync(Guid organizationId, Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Appointment>> GetForDayAsync(DateTime date, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Appointment>> GetAllWithDetailsAsync(CancellationToken cancellationToken = default);
@@ -18,6 +23,13 @@ public interface IAppointmentRepository : IRepository<Appointment>
     Task<int> CountActivePendingAsync(
         Guid organizationId,
         Guid clientId,
+        DateTime now,
+        CancellationToken cancellationToken = default);
+    Task<bool> HasOverlappingActivePendingAsync(
+        Guid organizationId,
+        Guid clientId,
+        DateTime startTime,
+        DateTime endTime,
         DateTime now,
         CancellationToken cancellationToken = default);
     Task<int> CancelExpiredPendingBatchAsync(

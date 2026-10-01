@@ -142,6 +142,7 @@ public sealed class CreatePublicAppointmentRequestValidator : AbstractValidator<
 {
     public CreatePublicAppointmentRequestValidator()
     {
+        RuleFor(request => request.FreeSlotId).NotEmpty();
         RuleFor(request => request.VkParams).NotEmpty();
         RuleFor(request => request.Name).NotEmpty().MaximumLength(200);
         RuleFor(request => request.Phone).MaximumLength(40);
