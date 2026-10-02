@@ -10,4 +10,4 @@ scrape_configs:
       - targets: ['host.docker.internal:5102']
         labels:
           application: 'blankocrm'
-          environment: 'production'
+          environment: 'development'

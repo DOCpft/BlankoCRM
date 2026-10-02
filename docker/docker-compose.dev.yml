@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: blanko_api_dev
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=blankocrm;Username=blanko;Password=${POSTGRES_PASSWORD:-blanko_pass}
+      LogSinks__Seq__Uri: http://seq:80
+    ports:
+      - "5102:8080"
+    depends_on:
+      postgres:
+        condition: service_started
+      seq:
+        condition: service_started
+    restart: unless-stopped

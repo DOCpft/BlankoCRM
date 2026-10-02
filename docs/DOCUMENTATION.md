@@ -66,7 +66,7 @@
 
 ## 2. Архитектура и слои
 
-Проект построен по многослойной схеме (Clean Architecture). Решение `BlankoCRM.sln` содержит 4 проекта.
+Проект построен по многослойной схеме (Clean Architecture). Решение `BlankoCRM.sln` содержит 4 production-проекта и два тестовых проекта.
 
 | Проект | Назначение | Ключевое содержимое |
 |---|---|---|
@@ -74,6 +74,8 @@
 | `BlankoCRM.Infrastructure` | EF Core (`AppDbContext`), репозитории, миграции, внешние HTTP-клиенты | `Data/`, `Repositories/`, `ExternalServices/`, `Migrations/` |
 | `BlankoCRM.Application` | Сервисы (бизнес-логика), DTO, валидаторы, маппинг, абстракции | `Services/`, `Abstract/`, `DTOs/`, `Validation/` |
 | `BlankoCRM.Web` | Контроллеры, middleware, фоновые сервисы, DI, конфигурация | `Controllers/`, `Middleware/`, `BackgroundServices/` |
+| `BlankoCRM.UnitTests` | Unit-тесты application-сценариев с изоляцией зависимостей | `tests/BlankoCRM.UnitTests/` |
+| `BlankoCRM.IntegrationTests` | Интеграционные тесты EF Core, включая изоляцию tenant-данных | `tests/BlankoCRM.IntegrationTests/` |
 
 ### Направление зависимостей
 ```
@@ -549,20 +551,20 @@ catch
 
 ## 13. Миграции базы данных
 
-Миграции лежат в `BlankoCRM.Infrastructure/Migrations` (EF Core, Npgsql). Применяются автоматически при старте (`dbContext.Database.MigrateAsync()` в `Program.cs`).
+Миграции лежат в `src/BlankoCRM.Infrastructure/Migrations` (EF Core, Npgsql). Применяются автоматически при старте (`dbContext.Database.MigrateAsync()` в `Program.cs`).
 
 Создать новую миграцию:
 ```bash
 dotnet ef migrations add <Name> \
-  --project BlankoCRM/BlankoCRM.Infrastructure/BlankoCRM.Infrastructure.csproj \
-  --startup-project BlankoCRM/BlankoCRM.Web/BlankoCRM.Web.csproj
+  --project src/BlankoCRM.Infrastructure/BlankoCRM.Infrastructure.csproj \
+  --startup-project src/BlankoCRM.Web/BlankoCRM.Web.csproj
 ```
 
 Применить:
 ```bash
 dotnet ef database update \
-  --project BlankoCRM/BlankoCRM.Infrastructure/BlankoCRM.Infrastructure.csproj \
-  --startup-project BlankoCRM/BlankoCRM.Web/BlankoCRM.Web.csproj
+  --project src/BlankoCRM.Infrastructure/BlankoCRM.Infrastructure.csproj \
+  --startup-project src/BlankoCRM.Web/BlankoCRM.Web.csproj
 ```
 
 ---
@@ -575,9 +577,21 @@ dotnet ef database update \
 ```bash
 cd d:\kirill
 dotnet build BlankoCRM.sln
-dotnet run --project BlankoCRM/BlankoCRM.Web/BlankoCRM.Web.csproj
+dotnet run --project src/BlankoCRM.Web/BlankoCRM.Web.csproj
 ```
 4. Swagger UI доступен на `/swagger`, метрики Prometheus — `/metrics`.
+
+### Тесты
+
+Unit-тесты бизнес-сервисов находятся в `tests/BlankoCRM.UnitTests` и запускаются без внешней базы данных:
+```bash
+dotnet test tests/BlankoCRM.UnitTests/BlankoCRM.UnitTests.csproj
+```
+
+Интеграционные тесты находятся в `tests/BlankoCRM.IntegrationTests`. Они проверяют EF Core query filters на InMemory provider, в частности недоступность записей другой организации, и не требуют запуска Docker или PostgreSQL:
+```bash
+dotnet test tests/BlankoCRM.IntegrationTests/BlankoCRM.IntegrationTests.csproj
+```
 
 ---
 
@@ -590,7 +604,7 @@ dotnet run --project BlankoCRM/BlankoCRM.Web/BlankoCRM.Web.csproj
 - Rate limiting исходящих в Telegram отсутствует.
 - Рассылка напоминаний — 5 простых SQL-запросов (по одному на offset), без единого большого запроса.
 - Привязка «один мастер = одна организация» (поиск мастера по `OrganizationId` берёт первого пользователя).
-- Полный набор unit/E2E-тестов не входит в скоуп (тестового проекта в решении нет).
+- Unit-тесты application-сценариев находятся в `tests/BlankoCRM.UnitTests`; интеграционные EF Core проверки — в `tests/BlankoCRM.IntegrationTests`. Автоматизированный E2E-набор не входит в текущий скоуп.
 - В `ScheduleService`/`AppointmentService` часть логов и текстов ошибок — на русском, часть — на английском (исторически).
 
 

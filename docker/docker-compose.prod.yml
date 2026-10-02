@@ -1,0 +1,26 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: blanko_api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=blankocrm;Username=blanko;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:-BlankoCRM}
+      Jwt__Audience: ${JWT_AUDIENCE:-BlankoCRMClient}
+      VkApp__Id: ${VK_APP_ID:?Set VK_APP_ID}
+      VkApp__Secret: ${VK_APP_SECRET:?Set VK_APP_SECRET}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN}
+      Telegram__WebhookSecret: ${TELEGRAM_WEBHOOK_SECRET:?Set TELEGRAM_WEBHOOK_SECRET}
+      LogSinks__Seq__Uri: http://seq:80
+    ports:
+      - "5102:8080"
+    depends_on:
+      postgres:
+        condition: service_started
+      seq:
+        condition: service_started
+    restart: unless-stopped
