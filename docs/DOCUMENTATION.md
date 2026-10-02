@@ -588,10 +588,11 @@ Unit-тесты бизнес-сервисов находятся в `tests/Blank
 dotnet test tests/BlankoCRM.UnitTests/BlankoCRM.UnitTests.csproj
 ```
 
-Интеграционные тесты находятся в `tests/BlankoCRM.IntegrationTests`. Они проверяют EF Core query filters на InMemory provider, в частности недоступность записей другой организации, и не требуют запуска Docker или PostgreSQL:
+Тесты EF Core находятся в `tests/BlankoCRM.IntegrationTests`. Они проверяют query filters на InMemory provider, в частности недоступность записей другой организации, и не требуют запуска Docker или PostgreSQL:
 ```bash
 dotnet test tests/BlankoCRM.IntegrationTests/BlankoCRM.IntegrationTests.csproj
 ```
+InMemory provider не эмулирует поведение PostgreSQL и не проверяет database constraints, включая unique, exclusion и check constraints. Для проверки этих ограничений потребуется отдельный набор тестов на PostgreSQL.
 
 ---
 

@@ -68,7 +68,7 @@ dotnet test tests/BlankoCRM.UnitTests/BlankoCRM.UnitTests.csproj
 dotnet test tests/BlankoCRM.IntegrationTests/BlankoCRM.IntegrationTests.csproj
 ```
 
-Unit-тесты изолируют зависимости сервисов с помощью Moq. Integration-тесты проверяют поведение EF Core на InMemory provider и также не требуют запущенной базы данных или Docker.
+Unit-тесты изолируют зависимости сервисов с помощью Moq. Integration-тесты проверяют EF Core query filters на InMemory provider и не требуют базы данных или Docker. Они не проверяют PostgreSQL constraints; для этого понадобится PostgreSQL-backed набор тестов.
 
 ## Документация
 
