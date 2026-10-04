@@ -1,0 +1,83 @@
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: var(--crm-color-bg);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 460px;
+  padding: 24px 20px;
+  border-radius: var(--crm-card-radius);
+  background: var(--crm-surface);
+  box-shadow: var(--crm-card-shadow);
+}
+
+.auth-card h1 {
+  margin: 0 0 24px;
+  font-size: 24px;
+  text-align: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-form .vkuiFormItem {
+  margin: 0;
+}
+
+.auth-form .vkuiButton {
+  min-height: var(--crm-tap-target);
+}
+
+.auth-form__footer,
+.auth-page__back {
+  color: var(--crm-muted);
+  text-align: center;
+}
+
+.auth-form__footer a,
+.auth-page__back {
+  color: var(--crm-color-primary);
+}
+
+.auth-page__back {
+  display: block;
+  min-height: var(--crm-tap-target);
+  padding-top: 12px;
+}
+
+.auth-error,
+.auth-success {
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--crm-radius-md);
+}
+
+.auth-error {
+  background: rgb(230 70 70 / 10%);
+  color: var(--crm-color-danger);
+}
+
+.auth-success {
+  background: rgb(34 197 94 / 10%);
+  color: #16743a;
+}
+
+.auth-vk-login {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 768px) {
+  .auth-card {
+    padding: 32px;
+  }
+}

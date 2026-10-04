@@ -1,0 +1,24 @@
+:root {
+  --crm-color-primary: #2688eb;
+  --crm-color-danger: #e64646;
+  --crm-color-text: #17212b;
+  --crm-color-bg: #f5f6f8;
+  --crm-surface: #ffffff;
+  --crm-muted: #6b6b6b;
+  --crm-border: #e6e4e3;
+  --crm-radius-md: 8px;
+  --crm-tap-target: 44px;
+  --crm-sidebar-width: 280px;
+  --crm-card-radius: 12px;
+  --crm-card-padding: 16px;
+  --crm-card-gap: 8px;
+  --crm-card-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+  --crm-card-bg: var(--crm-surface);
+  --crm-card-active-bg: rgb(0 0 0 / 4%);
+  --crm-status-scheduled: #22c55e;
+  --crm-status-pending: #f59e0b;
+  --crm-status-completed: #94a3b8;
+  --crm-status-cancelled: #ef4444;
+  --crm-status-noshow: #475569;
+  --crm-status-rejected: #a855f7;
+}

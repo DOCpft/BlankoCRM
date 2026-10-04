@@ -1,0 +1,638 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.crm-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crm-contact-list h3 {
+  margin: 8px 0 0;
+  font-size: 16px;
+}
+
+.crm-contact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.crm-contact-row > button {
+  min-width: var(--crm-tap-target);
+  min-height: var(--crm-tap-target);
+  margin-bottom: 8px;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--crm-color-bg);
+  color: var(--crm-color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.crm-shell {
+  min-height: 100dvh;
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
+.crm-main {
+  min-width: 0;
+  min-height: 100dvh;
+  padding: 12px;
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
+.crm-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.crm-appbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  gap: 8px;
+  background: var(--crm-color-bg);
+}
+
+.crm-appbar h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 20px;
+}
+
+.crm-appbar__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.crm-appbar > button {
+  min-width: var(--crm-tap-target);
+  min-height: var(--crm-tap-target);
+}
+
+.crm-shell .vkuiButton {
+  min-height: var(--crm-tap-target);
+}
+
+.crm-page {
+  padding-top: 16px;
+}
+
+.crm-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  gap: 12px;
+  margin-bottom: var(--crm-card-gap);
+  padding: var(--crm-card-padding);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--crm-card-radius);
+  background: var(--crm-card-bg);
+  box-shadow: var(--crm-card-shadow);
+  color: inherit;
+  text-align: left;
+}
+
+.crm-card--interactive {
+  cursor: pointer;
+  font: inherit;
+  transition: background 100ms ease;
+}
+
+.crm-card--interactive:active {
+  background: var(--crm-card-active-bg);
+}
+
+.crm-card--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.crm-card__accent {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--card-accent);
+}
+
+.crm-data-list__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.crm-data-list__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.crm-data-list__subtitle,
+.crm-data-list__description,
+.crm-data-list__expiry {
+  margin-top: 4px;
+  color: var(--crm-muted);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crm-data-list__description {
+  font-size: 13px;
+}
+
+.crm-data-list__arrow {
+  color: var(--crm-muted);
+  font-size: 20px;
+}
+
+.crm-data-list__cards {
+  display: block;
+}
+
+.crm-data-list__table-wrap {
+  display: none;
+  overflow-x: auto;
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-card-radius);
+  background: var(--crm-surface);
+}
+
+.crm-data-list__table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.crm-data-list__table th,
+.crm-data-list__table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--crm-border);
+}
+
+.crm-data-list__table tbody tr[tabindex] {
+  cursor: pointer;
+}
+
+.crm-data-list__table tbody tr[tabindex]:hover,
+.crm-data-list__table tbody tr[tabindex]:focus-visible {
+  background: var(--crm-card-active-bg);
+}
+
+.crm-data-list__state {
+  padding: 24px 12px;
+  color: var(--crm-muted);
+  text-align: center;
+}
+
+.crm-data-list__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.crm-avatar {
+  display: inline-flex;
+  flex: 0 0 var(--avatar-size, 48px);
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size, 48px);
+  height: var(--avatar-size, 48px);
+  border-radius: 50%;
+  background: var(--crm-color-primary);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.crm-modal-layer {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.crm-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: rgb(0 0 0 / 40%);
+}
+
+.crm-modal {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100dvh;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: var(--crm-surface);
+}
+
+.crm-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  gap: 8px;
+}
+
+.crm-modal__header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.crm-modal__header button {
+  min-width: var(--crm-tap-target);
+  min-height: var(--crm-tap-target);
+}
+
+.crm-modal__form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.crm-modal__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.crm-modal__actions > * {
+  flex: 1;
+}
+
+.crm-snackbar {
+  margin: 8px 0;
+  padding: 12px;
+  border-radius: var(--crm-radius-md);
+}
+
+.crm-snackbar--error {
+  background: rgb(230 70 70 / 10%);
+  color: var(--crm-color-danger);
+}
+
+.crm-snackbar--success {
+  background: rgb(34 197 94 / 10%);
+  color: #16743a;
+}
+
+.crm-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.crm-page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.crm-page-toolbar > * {
+  min-height: var(--crm-tap-target);
+}
+
+.crm-avatar--service {
+  border-radius: var(--crm-radius-md);
+  background: #c8a5b8;
+}
+
+.crm-schedule-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.crm-schedule-week {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.crm-schedule-day h2 {
+  margin: 0;
+  font-size: 17px;
+  text-transform: capitalize;
+}
+
+  .crm-schedule-week {
+    grid-template-columns: repeat(7, minmax(190px, 1fr));
+    gap: 12px;
+    overflow-x: auto;
+    align-items: start;
+  }
+
+  .crm-schedule-day {
+    min-width: 190px;
+  }
+
+.crm-page__header,
+.crm-schedule-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.crm-page__header {
+  margin-bottom: 16px;
+}
+
+.crm-page__header h1,
+.crm-page__header p {
+  margin: 0;
+}
+
+.crm-page__header p {
+  margin-top: 4px;
+  color: var(--crm-muted);
+}
+
+.crm-schedule-toolbar {
+  margin: 12px 0;
+}
+
+.crm-schedule-list {
+  display: grid;
+  gap: 8px;
+}
+
+.crm-schedule-item {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-card-radius);
+  background: var(--crm-surface);
+}
+
+.crm-schedule-item--free {
+  border-style: dashed;
+}
+
+.crm-schedule-item__time,
+.crm-schedule-item__details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.crm-schedule-item__time span,
+.crm-schedule-item__details span,
+.crm-schedule-item__details small {
+  color: var(--crm-muted);
+}
+
+.crm-schedule-item__actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.crm-schedule-item__actions > * {
+  flex: 1 1 120px;
+}
+
+.crm-weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-radius-md);
+}
+
+.crm-weekdays label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.crm-profile-card,
+.crm-settings-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.crm-profile-card__details,
+.crm-settings-card__body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.crm-profile-card__details span,
+.crm-settings-card__body span,
+.crm-settings-note {
+  color: var(--crm-muted);
+}
+
+.crm-settings-note {
+  line-height: 1.5;
+}
+
+.crm-settings-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.crm-settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--crm-tap-target);
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-card-radius);
+  background: var(--crm-surface);
+}
+
+.crm-settings-toggle input {
+  width: 22px;
+  height: 22px;
+}
+
+.crm-settings-form {
+  display: flex;
+  max-width: 560px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.crm-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.crm-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.crm-form-grid input {
+  min-height: var(--crm-tap-target);
+  padding: 8px;
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-radius-md);
+  font: inherit;
+}
+
+.crm-schedule-row {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.crm-schedule-time {
+  padding-top: 12px;
+  color: var(--crm-muted);
+  font-size: 14px;
+}
+
+.crm-schedule-free {
+  width: 100%;
+  min-height: var(--crm-tap-target);
+  border: 1px dashed var(--crm-border);
+  border-radius: var(--crm-radius-md);
+  background: rgb(255 255 255 / 60%);
+  color: var(--crm-color-primary);
+  text-align: left;
+}
+
+.crm-appointment-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.crm-pending-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.crm-pending-actions > * {
+  flex: 1;
+}
+
+.crm-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.crm-status-badge--scheduled { background: color-mix(in srgb, var(--crm-status-scheduled) 15%, white); color: #16743a; }
+.crm-status-badge--pending { background: color-mix(in srgb, var(--crm-status-pending) 18%, white); color: #855500; }
+.crm-status-badge--completed { background: color-mix(in srgb, var(--crm-status-completed) 20%, white); color: #475569; }
+.crm-status-badge--cancelled { background: color-mix(in srgb, var(--crm-status-cancelled) 15%, white); color: #a62626; }
+.crm-status-badge--noshow { background: color-mix(in srgb, var(--crm-status-noshow) 15%, white); color: #334155; }
+.crm-status-badge--rejected { background: color-mix(in srgb, var(--crm-status-rejected) 15%, white); color: #7e22ce; }
+.crm-status-badge--archived,
+.crm-status-badge--withdrawn { background: #f0f0f0; color: var(--crm-muted); }
+
+@media (min-width: 1024px) {
+  .crm-appbar > button:first-child {
+    display: none;
+  }
+
+  .crm-main {
+    margin-left: var(--crm-sidebar-width);
+    padding: 24px;
+  }
+
+  .crm-content {
+    margin-right: auto;
+    margin-left: 0;
+  }
+
+  .crm-data-list__cards {
+    display: none;
+  }
+
+  .crm-data-list__table-wrap {
+    display: block;
+  }
+
+  .crm-modal-layer {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .crm-modal {
+    width: min(100%, 560px);
+    min-height: auto;
+    max-height: calc(100dvh - 48px);
+    padding: 20px;
+    border-radius: var(--crm-card-radius);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 20%);
+  }
+
+  .crm-schedule-item {
+    grid-template-columns: minmax(140px, 0.3fr) minmax(0, 1fr) minmax(260px, 0.9fr);
+    align-items: center;
+  }
+
+  .crm-schedule-item__actions {
+    grid-column: auto;
+    justify-content: flex-end;
+  }
+
+  .crm-schedule-item__actions > * {
+    flex: 0 1 auto;
+  }
+}

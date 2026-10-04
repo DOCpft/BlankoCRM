@@ -1,0 +1,31 @@
+{
+  "name": "@blanko/client-mini-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "deploy": "npm run build && vk-miniapps-deploy"
+  },
+  "dependencies": {
+    "@blanko/shared": "*",
+    "@tanstack/react-query": "^5.80.7",
+    "axios": "^1.10.0",
+    "@vkontakte/icons": "^3.1.1",
+    "@vkontakte/vk-bridge": "^3.0.2",
+    "@vkontakte/vkui": "^8.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.30.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^6.0.2",
+    "@vkontakte/vk-miniapps-deploy": "^0.1.6",
+    "vite": "^8.0.16"
+  }
+}
