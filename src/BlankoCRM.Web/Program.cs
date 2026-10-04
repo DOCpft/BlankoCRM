@@ -113,6 +113,12 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+var allowedCorsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+if (allowedCorsOrigins.Length > 0)
+{
+    builder.Services.AddCors(options => options.AddPolicy("ConfiguredOrigins", policy =>
+        policy.WithOrigins(allowedCorsOrigins).AllowAnyHeader().AllowAnyMethod()));
+}
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -224,6 +230,10 @@ app.UseBlankoRequestLogging();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseRateLimiter();
+if (allowedCorsOrigins.Length > 0)
+{
+    app.UseCors("ConfiguredOrigins");
+}
 app.UseAuthentication();
 app.UseAuthorization();
 

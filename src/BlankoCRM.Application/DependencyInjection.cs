@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IAppointmentExpirationService, AppointmentExpirationService>();
         services.AddScoped<IPublicAppointmentService, PublicAppointmentService>();
         services.AddScoped<IPublicScheduleService, PublicScheduleService>();
+        services.AddScoped<IPublicServiceCatalog, PublicServiceCatalog>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IScheduleService, ScheduleService>();
         services.AddScoped<IVkSignatureValidator, VkSignatureValidator>();
