@@ -20,8 +20,8 @@ namespace BlankoCRM.Application.Services
         {
             var appSecret = configuration["VkApp:Secret"]
                 ?? throw new InvalidOperationException("VkApp:Secret is not configured.");
-            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(appSecret));
-            _signingKey = hmac.ComputeHash(Encoding.UTF8.GetBytes("VK Mini Apps"));
+            // Ключ подписи — сам защищённый ключ приложения (без дополнительного HMAC).
+            _signingKey = Encoding.UTF8.GetBytes(appSecret);
         }
 
         /// <inheritdoc />
